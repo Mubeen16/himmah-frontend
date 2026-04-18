@@ -1,13 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
+import styles from './goals.module.css'
 
 type Category = 'professional' | 'spiritual' | 'family' | 'health'
-type DurationUnit = 'days' | 'weeks' | 'months' | 'years'
-type EffortUnit = 'hours' | 'days'
 
 interface Goal {
   id: number
@@ -33,32 +32,22 @@ function todayIso(): string {
   ).padStart(2, '0')}`
 }
 
-function sixMonthsFromTodayIso(): string {
-  const d = new Date()
-  d.setMonth(d.getMonth() + 6)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-    d.getDate()
-  ).padStart(2, '0')}`
+function weeksFromTodayToDate(isoDate: string): number {
+  if (!isoDate) return 0
+  const today = new Date()
+  const end = new Date(isoDate)
+  return Math.max(0, Math.round((end.getTime() - today.getTime()) / (7 * 24 * 60 * 60 * 1000)))
 }
 
-function shiftDateFromToday(amount: number, unit: DurationUnit): string {
-  const d = new Date()
-  if (unit === 'days') d.setDate(d.getDate() + amount)
-  if (unit === 'weeks') d.setDate(d.getDate() + amount * 7)
-  if (unit === 'months') d.setMonth(d.getMonth() + amount)
-  if (unit === 'years') d.setFullYear(d.getFullYear() + amount)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-    d.getDate()
-  ).padStart(2, '0')}`
+function normalizeGoalCategory(raw: string): string {
+  const cats: Category[] = ['professional', 'spiritual', 'family', 'health']
+  return cats.includes(raw as Category) ? raw : 'professional'
 }
 
-function longDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
+function capitalizeFirstLetter(text: string): string {
+  const t = text.trim()
+  if (!t) return t
+  return t.charAt(0).toUpperCase() + t.slice(1)
 }
 
 function stats(goal: Goal) {
@@ -109,26 +98,28 @@ function colorsForCategory(category: string) {
   }
 }
 
-export default function GoalsPage() {
+function GoalsPageContent() {
   const searchParams = useSearchParams()
   const isOnboarding = searchParams.get('onboarding') === 'true'
-  const quickCategories: Category[] = ['professional', 'spiritual', 'family', 'health']
+  const [displayName, setDisplayName] = useState('Mubeen')
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [freqMode, setFreqMode] = useState<'daily' | 'weekly' | 'monthly'>('daily')
+  const [daysPerWeek, setDaysPerWeek] = useState(5)
+  const [hoursPerSession, setHoursPerSession] = useState(2)
+  const [hoursPerWeek, setHoursPerWeek] = useState(10)
+  const [hoursPerMonth, setHoursPerMonth] = useState(40)
+  const [formIsPrimary, setFormIsPrimary] = useState(false)
   const [formTitle, setFormTitle] = useState('')
   const [formCategory, setFormCategory] = useState('professional')
-  const [formTargetHours, setFormTargetHours] = useState(100)
-  const [formEndDate, setFormEndDate] = useState(sixMonthsFromTodayIso())
-  const [durationValue, setDurationValue] = useState(6)
-  const [durationUnit, setDurationUnit] = useState<DurationUnit>('months')
-  const [effortValue, setEffortValue] = useState(100)
-  const [effortUnit, setEffortUnit] = useState<EffortUnit>('hours')
+  const [formEndDate, setFormEndDate] = useState('')
   const [saving, setSaving] = useState(false)
+  const [editGoalId, setEditGoalId] = useState<number | null>(null)
 
   const primaryGoal = useMemo(() => goals.find(g => g.is_primary) ?? null, [goals])
   const grouped = useMemo(() => {
-      const order: Category[] = ['professional', 'spiritual', 'family', 'health']
+    const order: Category[] = ['professional', 'spiritual', 'family', 'health']
     const result: Record<Category, Goal[]> = {
       professional: [],
       spiritual: [],
@@ -145,17 +136,45 @@ export default function GoalsPage() {
     return result
   }, [goals])
 
+  const weeksToDeadline = useMemo(() => weeksFromTodayToDate(formEndDate), [formEndDate])
+
+  const perWeekHours = useMemo(() => {
+    if (freqMode === 'daily') return Math.round(daysPerWeek * hoursPerSession * 10) / 10
+    if (freqMode === 'weekly') return hoursPerWeek
+    return Math.round((hoursPerMonth / 4.33) * 10) / 10
+  }, [freqMode, daysPerWeek, hoursPerSession, hoursPerWeek, hoursPerMonth])
+
+  const totalHours = useMemo(() => {
+    return Math.round(weeksToDeadline * perWeekHours * 10) / 10
+  }, [weeksToDeadline, perWeekHours])
+
+  const paceLabel = useMemo(() => {
+    if (totalHours === 0) return { text: 'adjust your commitment', color: '#EF9F27' }
+    if (perWeekHours >= 15) return { text: 'heavy commitment — stay consistent', color: '#EF9F27' }
+    if (perWeekHours >= 8) return { text: 'serious pace — respect', color: '#5DCAA5' }
+    if (perWeekHours >= 4) return { text: 'solid — keep it daily', color: '#5DCAA5' }
+    return { text: 'light pace — consider more time', color: '#EF9F27' }
+  }, [perWeekHours, totalHours])
+
+  useEffect(() => {
+    const username = typeof window !== 'undefined' ? localStorage.getItem('username') : null
+    if (username) setDisplayName(username)
+  }, [])
+
   useEffect(() => {
     void loadGoals()
   }, [])
 
-  useEffect(() => {
-    setFormEndDate(shiftDateFromToday(Math.max(1, durationValue), durationUnit))
-  }, [durationValue, durationUnit])
+  const modalOpen = formOpen || editGoalId !== null
 
   useEffect(() => {
-    setFormTargetHours(effortUnit === 'hours' ? Math.max(1, effortValue) : Math.max(1, effortValue) * 4)
-  }, [effortValue, effortUnit])
+    if (!modalOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [modalOpen])
 
   async function loadGoals() {
     setLoading(true)
@@ -167,32 +186,115 @@ export default function GoalsPage() {
     }
   }
 
-  async function addGoal() {
-    if (!formTitle.trim()) return
+  function resetFormFields() {
+    setFormTitle('')
+    setFormCategory('professional')
+    setFormEndDate('')
+    setFormIsPrimary(false)
+    setFreqMode('daily')
+    setDaysPerWeek(5)
+    setHoursPerSession(2)
+    setHoursPerWeek(10)
+    setHoursPerMonth(40)
+  }
+
+  function closeModal() {
+    setFormOpen(false)
+    setEditGoalId(null)
+    resetFormFields()
+  }
+
+  function openForm() {
+    resetFormFields()
+    setEditGoalId(null)
+    setFormOpen(true)
+  }
+
+  function openEditForm(goal: Goal) {
+    setFormOpen(false)
+    setEditGoalId(goal.id)
+    setFormTitle(goal.title)
+    setFormCategory(normalizeGoalCategory(goal.category))
+    setFormEndDate(goal.target_date.slice(0, 10))
+    setFormIsPrimary(!!goal.is_primary)
+    const weeks = weeksFromTodayToDate(goal.target_date.slice(0, 10))
+    const th = Number(goal.target_hours)
+    if (weeks > 0 && th > 0) {
+      const hw = Math.min(80, Math.max(0.5, Math.round((th / weeks) * 10) / 10))
+      setFreqMode('weekly')
+      setHoursPerWeek(hw)
+      setDaysPerWeek(5)
+      setHoursPerSession(2)
+      setHoursPerMonth(40)
+    } else {
+      setFreqMode('weekly')
+      setHoursPerWeek(th > 0 ? Math.min(80, Math.max(1, Math.round(th * 10) / 10)) : 10)
+      setDaysPerWeek(5)
+      setHoursPerSession(2)
+      setHoursPerMonth(40)
+    }
+  }
+
+  async function handleAddGoal() {
+    if (!formTitle.trim() || !formEndDate || totalHours === 0) return
     setSaving(true)
     try {
+      const currentPrimary = goals.find(g => g.is_primary)
+      if (formIsPrimary && currentPrimary) {
+        await api.patch(`/goals/${currentPrimary.id}/`, { is_primary: false })
+      }
       await api.post('/goals/', {
         title: formTitle.trim(),
         category: formCategory,
         status: 'active',
-        target_hours: formTargetHours,
+        target_hours: totalHours,
         start_date: todayIso(),
         target_date: formEndDate,
-        is_primary: false,
+        is_primary: formIsPrimary,
       })
-      setFormTitle('')
-      setFormCategory('professional')
-      setFormTargetHours(100)
-      setFormEndDate(sixMonthsFromTodayIso())
-      setDurationValue(6)
-      setDurationUnit('months')
-      setEffortValue(100)
-      setEffortUnit('hours')
-      setShowForm(false)
+      closeModal()
       await loadGoals()
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleSaveEdit() {
+    if (editGoalId === null || !formTitle.trim() || !formEndDate) return
+    setSaving(true)
+    try {
+      const currentPrimary = goals.find(g => g.is_primary && g.id !== editGoalId)
+      if (formIsPrimary && currentPrimary) {
+        await api.patch(`/goals/${currentPrimary.id}/`, { is_primary: false })
+      }
+      const payload: {
+        title: string
+        category: string
+        target_date: string
+        is_primary: boolean
+        target_hours?: number
+      } = {
+        title: formTitle.trim(),
+        category: formCategory,
+        target_date: formEndDate,
+        is_primary: formIsPrimary,
+      }
+      if (totalHours > 0) payload.target_hours = totalHours
+      await api.patch(`/goals/${editGoalId}/`, payload)
+      closeModal()
+      await loadGoals()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function setPrimaryGoal(id: number) {
+    const current = goals.find(g => g.is_primary)
+    if (current) {
+      await api.patch(`/goals/${current.id}/`, { is_primary: false })
+    }
+    await api.patch(`/goals/${id}/`, { is_primary: true })
+    await loadGoals()
   }
 
   async function deleteGoal(id: number) {
@@ -202,29 +304,38 @@ export default function GoalsPage() {
     await loadGoals()
   }
 
-  function GoalCard({ goal, primary, onDelete }: { goal: Goal; primary: boolean; onDelete: () => void }) {
+  function GoalCard({
+    goal,
+    primary,
+    onDelete,
+    onSetPrimary,
+    onOpenEdit,
+  }: {
+    goal: Goal
+    primary: boolean
+    onDelete: () => void
+    onSetPrimary?: () => void
+    onOpenEdit: () => void
+  }) {
     const s = stats(goal)
     const c = colorsForCategory(goal.category)
+    const pct =
+      goal.target_hours > 0
+        ? Math.min(100, Math.round((Number(goal.logged_hours) / Number(goal.target_hours)) * 100))
+        : 0
     return (
       <div
-        style={{
-          background: 'var(--bg-card)',
-          border: `1px solid ${primary ? '#2a2a2a' : '#1e1e1e'}`,
-          borderRadius: '8px',
-          padding: '.9rem 1rem',
-          marginBottom: '8px',
-        }}
+        className={[styles.goalCard, primary ? styles.goalCardPrimary : '', styles.goalCardInteractive].filter(Boolean).join(' ')}
+        onClick={onOpenEdit}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '.5rem' }}>
-          <div style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-primary)', lineHeight: 1.35, flex: 1 }}>
-            {goal.title}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div className={styles.goalCardTitle}>{goal.title}</div>
+          <div className={styles.goalCardToolbar} onClick={e => e.stopPropagation()}>
             <div
               style={{
-                fontSize: '10px',
-                padding: '2px 8px',
-                borderRadius: '20px',
+                fontSize: 10,
+                padding: '3px 9px',
+                borderRadius: 20,
                 color: c.badgeColor,
                 background: c.badgeBg,
                 border: `1px solid ${c.badgeBorder}`,
@@ -232,47 +343,57 @@ export default function GoalsPage() {
             >
               {goal.category}
             </div>
-            <button
-              type="button"
-              onClick={onDelete}
-              style={{
-                fontSize: '10px',
-                color: 'var(--text-muted)',
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = '#D85A30'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = 'var(--text-muted)'
-              }}
-            >
+            {!primary && onSetPrimary ? (
+              <button type="button" onClick={onSetPrimary} className={styles.setPrimaryBtn}>
+                set primary
+              </button>
+            ) : null}
+            <button type="button" onClick={onDelete} className={styles.deleteBtn}>
               delete
             </button>
           </div>
         </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '.6rem' }}>
+        <div className={styles.goalCardMeta}>
           {monthYear(goal.start_date)} → {monthYear(goal.target_date)} · {s.target}h target
         </div>
-        <div style={{ width: '100%', height: '2px', background: '#1e1e1e', borderRadius: '1px', marginBottom: '.35rem' }}>
+        <div style={{ width: '100%', height: 3, background: '#252525', borderRadius: 2, marginBottom: 6 }}>
           <div
             style={{
               width: `${s.progress}%`,
-              height: '2px',
-              borderRadius: '1px',
+              height: 3,
+              borderRadius: 2,
               background: c.fill,
             }}
           />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-faint)' }}>
+        <div className={styles.goalCardStatsRow}>
           <span>{s.logged}h logged</span>
-          <span style={{ color: 'var(--text-primary)' }}>{s.target}h target</span>
+          <span className={styles.goalCardStatsTarget}>{s.target}h target</span>
+        </div>
+        <div
+          style={{
+            height: 3,
+            background: '#1a1a1a',
+            borderRadius: 2,
+            margin: '8px 0 2px',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              borderRadius: 2,
+              background: goal.is_primary ? '#EF9F27' : '#5DCAA5',
+              width: pct + '%',
+              transition: 'width 0.3s ease',
+            }}
+          />
+        </div>
+        <div style={{ fontSize: 11, color: '#333' }}>
+          {pct}% of {goal.target_hours}h target
         </div>
         {s.logged > 0 ? (
-          <div style={{ fontSize: '10px', color: s.onTrack ? '#5DCAA5' : '#D85A30', marginTop: '.35rem' }}>
+          <div style={{ fontSize: 11, color: s.onTrack ? '#5DCAA5' : '#D85A30', marginTop: 6, fontWeight: 500 }}>
             {s.onTrack ? 'on track' : 'behind'}
           </div>
         ) : null}
@@ -280,254 +401,282 @@ export default function GoalsPage() {
     )
   }
 
+  const categoryOrder: Category[] = ['professional', 'spiritual', 'family', 'health']
+  const categoriesWithGoals = categoryOrder.filter(cat => grouped[cat].length > 0)
+
+  const dateLabel = new Date()
+    .toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    .toLowerCase()
+
   return (
-    <Shell>
-      {isOnboarding && goals.length === 0 ? (
-        <div
-          style={{
-            background: '#1a2a1a',
-            border: '1px solid #0F6E56',
-            borderRadius: '8px',
-            padding: '0.75rem 1rem',
-            marginBottom: '1.25rem',
-            fontSize: '13px',
-            color: '#5DCAA5',
-          }}
-        >
-          start here — add your first goal before planning your day
+    <Shell wide>
+      <div className={styles.page}>
+        {isOnboarding && goals.length === 0 ? (
+          <div className={styles.onboardingBanner}>start here — add your first goal before planning your day</div>
+        ) : null}
+        <div className={styles.hero}>
+          <div className={styles.heroDate}>{dateLabel}</div>
+          <h1 className={styles.heroTitle}>
+            your goals,
+            <br />
+            <strong>{capitalizeFirstLetter(displayName)}</strong>
+          </h1>
+          <div className={styles.heroSub}>everything you&apos;re building toward</div>
+        </div>
+
+        <button type="button" onClick={openForm} className={styles.addGoalBtn}>
+          + add a new goal
+        </button>
+
+        {loading ? (
+          <p className={styles.loadingText}>loading...</p>
+        ) : (
+          <>
+            {primaryGoal ? (
+              <>
+                <div className={styles.sectionLabel} style={{ marginTop: 0 }}>
+                  primary
+                </div>
+                <GoalCard
+                  goal={primaryGoal}
+                  primary
+                  onDelete={() => void deleteGoal(primaryGoal.id)}
+                  onOpenEdit={() => openEditForm(primaryGoal)}
+                />
+                <div style={{ height: 1, background: '#2a2a2a', margin: 0 }} />
+              </>
+            ) : null}
+
+            {categoriesWithGoals.map((cat, i) => (
+              <div key={cat}>
+                <div className={styles.sectionLabel}>{cat}</div>
+                {grouped[cat].map(goal => (
+                  <GoalCard
+                    key={goal.id}
+                    goal={goal}
+                    primary={false}
+                    onDelete={() => void deleteGoal(goal.id)}
+                    onSetPrimary={() => void setPrimaryGoal(goal.id)}
+                    onOpenEdit={() => openEditForm(goal)}
+                  />
+                ))}
+                {i < categoriesWithGoals.length - 1 ? <div style={{ height: 1, background: '#2a2a2a', margin: 0 }} /> : null}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+
+      {modalOpen ? (
+        <div className={styles.modalBackdrop} onClick={closeModal}>
+          <div className={styles.modalPanel} onClick={e => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>{editGoalId !== null ? 'edit goal' : 'new goal'}</h2>
+
+            <div>
+              <div className={styles.modalLabel}>what are you building?</div>
+              <input
+                className={styles.modalInput}
+                value={formTitle}
+                onChange={e => setFormTitle(e.target.value)}
+                placeholder="Brocamp, learn Spanish, run a marathon..."
+                autoFocus={editGoalId === null}
+              />
+            </div>
+
+            <div>
+              <div className={styles.modalLabel}>category</div>
+              <div className={styles.categoryRow}>
+                {['professional', 'spiritual', 'family', 'health'].map(cat => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setFormCategory(cat)}
+                    className={[styles.categoryPill, formCategory === cat ? styles.categoryPillActive : ''].filter(Boolean).join(' ')}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className={styles.modalLabel}>deadline</div>
+              <input
+                type="date"
+                className={`${styles.modalInput} ${styles.modalInputDate}`}
+                value={formEndDate}
+                onChange={e => setFormEndDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <div className={styles.modalLabel}>how do you want to commit?</div>
+              <div className={styles.modalSegmentWrap}>
+                {(['daily', 'weekly', 'monthly'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setFreqMode(mode)}
+                    className={[styles.modalSegmentBtn, freqMode === mode ? styles.modalSegmentBtnActive : ''].filter(Boolean).join(' ')}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+
+              <div className={styles.modalInsetBox}>
+                {freqMode === 'daily' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div>
+                      <div className={styles.modalInsetLabel}>days per week</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input
+                          type="number"
+                          min={1}
+                          max={7}
+                          value={daysPerWeek}
+                          onChange={e => setDaysPerWeek(Number(e.target.value))}
+                          className={styles.modalNumber}
+                        />
+                        <span className={styles.modalUnit}>days</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className={styles.modalInsetLabel}>hours per session</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input
+                          type="number"
+                          min={0.5}
+                          max={12}
+                          step={0.5}
+                          value={hoursPerSession}
+                          onChange={e => setHoursPerSession(Number(e.target.value))}
+                          className={styles.modalNumber}
+                        />
+                        <span className={styles.modalUnit}>hrs</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : freqMode === 'weekly' ? (
+                  <div>
+                    <div className={styles.modalInsetLabel}>hours per week</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input
+                        type="number"
+                        min={1}
+                        max={80}
+                        value={hoursPerWeek}
+                        onChange={e => setHoursPerWeek(Number(e.target.value))}
+                        className={`${styles.modalNumber} ${styles.modalNumberLg}`}
+                      />
+                      <span className={styles.modalUnit}>hours / week</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className={styles.modalInsetLabel}>hours per month</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input
+                        type="number"
+                        min={1}
+                        max={300}
+                        value={hoursPerMonth}
+                        onChange={e => setHoursPerMonth(Number(e.target.value))}
+                        className={`${styles.modalNumber} ${styles.modalNumberLg}`}
+                      />
+                      <span className={styles.modalUnit}>hours / month</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <hr className={styles.modalDivider} />
+
+            <div className={styles.modalCommitCard}>
+              <div className={styles.modalCommitHeading}>your commitment</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div className={styles.modalCommitRow}>
+                  <span className={styles.modalCommitKey}>weeks to deadline</span>
+                  <span className={styles.modalCommitVal}>{weeksToDeadline > 0 ? `${weeksToDeadline} weeks` : '—'}</span>
+                </div>
+                <div className={styles.modalCommitRow}>
+                  <span className={styles.modalCommitKey}>per week</span>
+                  <span className={styles.modalCommitVal}>{perWeekHours > 0 ? `${perWeekHours}h` : '—'}</span>
+                </div>
+                <div className={styles.modalCommitRow}>
+                  <span className={styles.modalCommitKey}>total hours</span>
+                  <span className={styles.modalCommitValAccent}>{totalHours > 0 ? `${totalHours}h` : '—'}</span>
+                </div>
+                <div className={styles.modalCommitRow}>
+                  <span className={styles.modalCommitKey}>pace</span>
+                  <span className={styles.modalCommitVal} style={{ color: weeksToDeadline > 0 ? paceLabel.color : '#8a8680' }}>
+                    {weeksToDeadline > 0 ? paceLabel.text : 'set a deadline first'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div>
+                <div className={styles.modalPrimaryRowTitle}>set as primary goal</div>
+                <div className={styles.modalPrimaryRowHint}>shown on Today and Plan pages</div>
+              </div>
+              <button
+                type="button"
+                aria-pressed={formIsPrimary}
+                onClick={() => setFormIsPrimary(o => !o)}
+                className={[styles.modalToggle, formIsPrimary ? styles.modalToggleOn : ''].filter(Boolean).join(' ')}
+              >
+                <span
+                  className={[styles.modalToggleKnob, formIsPrimary ? styles.modalToggleKnobOn : ''].filter(Boolean).join(' ')}
+                  aria-hidden
+                />
+              </button>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button type="button" onClick={closeModal} className={styles.modalBtnCancel}>
+                cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void (editGoalId !== null ? handleSaveEdit() : handleAddGoal())}
+                disabled={
+                  saving ||
+                  !formTitle.trim() ||
+                  !formEndDate ||
+                  (editGoalId === null && totalHours === 0)
+                }
+                className={styles.modalBtnSubmit}
+              >
+                {saving ? 'saving...' : editGoalId !== null ? 'save changes' : 'add goal'}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
-      <div style={{ fontSize: '20px', color: 'var(--text-primary)', fontWeight: 400, marginBottom: '.25rem' }}>
-        your goals
-      </div>
-      <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-        everything you&apos;re building toward
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setShowForm(v => !v)}
-        style={{
-          width: '100%',
-          background: 'var(--bg-card)',
-          border: '1px solid #222',
-          borderRadius: '8px',
-          padding: '.65rem',
-          fontSize: 'var(--fs-meta)',
-          color: 'var(--text-muted)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          marginBottom: '1.5rem',
-          cursor: 'pointer',
-        }}
-      >
-        <span style={{ fontSize: '14px', color: 'var(--text-faint)' }}>+</span>
-        <span>add a new goal</span>
-      </button>
-
-      {showForm ? (
-        <>
-          <div style={{ fontSize: '10px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '.6rem' }}>
-            add new goal
-          </div>
-          <div
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid #1e1e1e',
-              borderRadius: '8px',
-              padding: '1rem',
-              marginBottom: '1.25rem',
-            }}
-          >
-            <input
-              value={formTitle}
-              onChange={e => setFormTitle(e.target.value)}
-              placeholder="goal title"
-              style={{
-                width: '100%',
-                background: 'var(--bg)',
-                border: '1px solid #1e1e1e',
-                borderRadius: '7px',
-                padding: '.5rem .65rem',
-                fontSize: 'var(--fs-meta)',
-                color: 'var(--text-primary)',
-                marginBottom: '8px',
-              }}
-            />
-            <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-              {quickCategories.map(cat => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setFormCategory(cat)}
-                  style={{
-                    flex: 1,
-                    padding: '.4rem',
-                    borderRadius: '6px',
-                    fontSize: '11px',
-                    textAlign: 'center',
-                    border: `1px solid ${formCategory === cat ? '#5DCAA5' : '#1e1e1e'}`,
-                    color: formCategory === cat ? '#5DCAA5' : 'var(--text-muted)',
-                    background: 'var(--bg)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-            <input
-              placeholder="or type your own category"
-              value={quickCategories.includes(formCategory as Category) ? '' : formCategory}
-              onChange={e => setFormCategory(e.target.value)}
-              style={{
-                width: '100%',
-                background: 'var(--bg)',
-                border: `1px solid ${quickCategories.includes(formCategory as Category) ? '#1e1e1e' : '#5DCAA5'}`,
-                borderRadius: '7px',
-                padding: '.5rem .65rem',
-                fontSize: 'var(--fs-meta)',
-                color: quickCategories.includes(formCategory as Category) ? 'var(--text-primary)' : '#5DCAA5',
-                marginBottom: '8px',
-              }}
-            />
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                <input
-                  type="number"
-                  min={1}
-                  value={durationValue}
-                  onChange={e => setDurationValue(Number(e.target.value) || 1)}
-                  style={{
-                    flex: 1,
-                    background: 'var(--bg)',
-                    border: '1px solid #1e1e1e',
-                    borderRadius: '7px',
-                    padding: '.5rem .65rem',
-                    fontSize: 'var(--fs-meta)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-                <div style={{ display: 'flex', gap: '4px', flex: 1.4 }}>
-                  {(['days', 'weeks', 'months', 'years'] as DurationUnit[]).map(unit => (
-                    <button
-                      key={unit}
-                      type="button"
-                      onClick={() => setDurationUnit(unit)}
-                      style={{
-                        flex: 1,
-                        padding: '.4rem',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        border: `1px solid ${durationUnit === unit ? '#5DCAA5' : '#1e1e1e'}`,
-                        color: durationUnit === unit ? '#5DCAA5' : 'var(--text-muted)',
-                        background: 'var(--bg)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {unit}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>until {longDate(formEndDate)}</div>
-            </div>
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: effortUnit === 'days' ? '6px' : '0' }}>
-                <input
-                  type="number"
-                  min={1}
-                  value={effortValue}
-                  onChange={e => setEffortValue(Number(e.target.value) || 1)}
-                  style={{
-                    flex: 1,
-                    background: 'var(--bg)',
-                    border: '1px solid #1e1e1e',
-                    borderRadius: '7px',
-                    padding: '.5rem .65rem',
-                    fontSize: 'var(--fs-meta)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-                <div style={{ display: 'flex', gap: '4px', flex: 1.4 }}>
-                  {(['hours', 'days'] as EffortUnit[]).map(unit => (
-                    <button
-                      key={unit}
-                      type="button"
-                      onClick={() => setEffortUnit(unit)}
-                      style={{
-                        flex: 1,
-                        padding: '.4rem',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        border: `1px solid ${effortUnit === unit ? '#5DCAA5' : '#1e1e1e'}`,
-                        color: effortUnit === unit ? '#5DCAA5' : 'var(--text-muted)',
-                        background: 'var(--bg)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {unit}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {effortUnit === 'days' ? (
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>= {formTargetHours}h total</div>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              onClick={() => void addGoal()}
-              disabled={saving}
-              style={{
-                width: '100%',
-                background: 'var(--text-primary)',
-                border: 'none',
-                borderRadius: '7px',
-                padding: '.7rem',
-                fontSize: 'var(--fs-meta)',
-                color: 'var(--bg)',
-                fontWeight: 500,
-                cursor: saving ? 'not-allowed' : 'pointer',
-                opacity: saving ? 0.45 : 1,
-              }}
-            >
-              {saving ? 'saving...' : 'add goal'}
-            </button>
-          </div>
-        </>
-      ) : null}
-
-      {loading ? (
-        <p style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-muted)' }}>loading...</p>
-      ) : (
-        <>
-          {primaryGoal ? (
-            <>
-              <div style={{ fontSize: '10px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '.6rem' }}>
-                primary
-              </div>
-              <GoalCard goal={primaryGoal} primary onDelete={() => void deleteGoal(primaryGoal.id)} />
-              <div style={{ height: '1px', background: '#1a1a1a', margin: '1.25rem 0' }} />
-            </>
-          ) : null}
-
-          {(['professional', 'spiritual', 'family', 'health'] as Category[]).map((cat, i) => (
-            <div key={cat}>
-              <div style={{ fontSize: '10px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '.6rem' }}>
-                {cat}
-              </div>
-              {grouped[cat].map(goal => (
-                <GoalCard key={goal.id} goal={goal} primary={false} onDelete={() => void deleteGoal(goal.id)} />
-              ))}
-              {i < 3 ? <div style={{ height: '1px', background: '#1a1a1a', margin: '1.25rem 0' }} /> : null}
-            </div>
-          ))}
-        </>
-      )}
-
     </Shell>
+  )
+}
+
+export default function GoalsPage() {
+  return (
+    <Suspense
+      fallback={
+        <Shell wide>
+          <div className={styles.page}>
+            <p className={styles.loadingText}>loading...</p>
+          </div>
+        </Shell>
+      }
+    >
+      <GoalsPageContent />
+    </Suspense>
   )
 }

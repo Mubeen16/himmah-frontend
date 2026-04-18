@@ -22,6 +22,8 @@
   --fs-body-small: 14px;
   --fs-title: 17px;
   --fs-hero: 22px;
+  /* Fixed shell header + safe area — main column & desktop sidebar top align to this */
+  --hm-fixed-header-offset: calc(4.2rem + env(safe-area-inset-top, 0px));
 }
 
 * {
@@ -55,12 +57,29 @@ a {
   text-decoration: none;
 }
 
+/* Flex wrapper: desktop sidebar + main push together (no overlap on expand) */
+.hm-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+}
+
 .hm-shell {
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
-  padding: clamp(1.25rem, 2.5vw, 2rem);
+  padding-top: 0;
+  padding-bottom: clamp(1.25rem, 2.5vw, 2rem);
+  padding-inline: clamp(0.75rem, 1.85vw, 1.4rem);
   min-height: 100vh;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Plan / calendar: use more horizontal space (default shell stays ~640–760px) */
+.hm-shell-wide {
+  max-width: min(1200px, 100%);
 }
 
 .hm-shell input,
@@ -71,10 +90,50 @@ a {
 }
 
 .hm-shell-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
+  justify-content: center;
+  margin: 0;
+  background: var(--bg);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.8rem);
+  padding-bottom: 0.85rem;
+  padding-left: clamp(0.75rem, 1.85vw, 1.4rem);
+  padding-right: clamp(0.75rem, 1.85vw, 1.4rem);
+  transition: left 180ms ease;
+}
+
+.hm-shell-headerInner {
+  width: 100%;
+  max-width: 640px;
+  margin-inline: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hm-shell-wide .hm-shell-headerInner {
+  max-width: min(1200px, 100%);
+}
+
+/* Match fixed header so page content starts below it, not under it */
+.hm-shell-main {
+  padding-top: var(--hm-fixed-header-offset);
+}
+
+.hm-shell-brandBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  align-self: stretch;
+  width: 100%;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .hm-shell-brand {
@@ -84,16 +143,101 @@ a {
   font-weight: 500;
 }
 
+/* Logo SVG: don’t inherit loose letter-spacing from .hm-shell-brand (breaks tight wordmark + can hide the dot) */
+.hm-shell-brandLogo {
+  letter-spacing: 0;
+  line-height: 0;
+}
+
+.hm-shell-brandLogo svg {
+  display: block;
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.hm-shell-tagline {
+  font-size: 10px;
+  font-weight: 400;
+  color: #6a6864;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
 .hm-arabic {
   font-family: var(--font-arabic), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .hm-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
   display: flex;
   justify-content: space-around;
-  padding-top: 1.25rem;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 8px calc(10px + env(safe-area-inset-bottom, 0px));
+  margin: 0;
   border-top: 1px solid var(--border-subtle);
-  margin-top: 2rem;
+  background: rgba(15, 15, 15, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.hm-bottom-nav-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  padding: 8px 4px 10px;
+  border-radius: 10px;
+  color: var(--text-fainter);
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.hm-bottom-nav-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+.hm-bottom-nav-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  line-height: 1.1;
+}
+
+.hm-bottom-nav-link:hover {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.hm-bottom-nav-link-active {
+  color: var(--teal);
+  background: rgba(93, 202, 165, 0.12);
+}
+
+.hm-bottom-nav-link-active:hover {
+  color: var(--teal);
+  background: rgba(93, 202, 165, 0.16);
+}
+
+@media (max-width: 1023px) {
+  .hm-shell {
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .hm-side-nav {
@@ -101,9 +245,33 @@ a {
 }
 
 @media (min-width: 1024px) {
+  .hm-app {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
   .hm-shell {
     max-width: 760px;
-    margin-left: 240px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-bottom: clamp(1.25rem, 2.5vw, 2rem);
+  }
+
+  .hm-shell-headerInner {
+    max-width: 760px;
+  }
+
+  .hm-shell.hm-shell-wide .hm-shell-headerInner {
+    max-width: min(1680px, 100%);
+  }
+
+  /* Logo bar only over the main column, not the rail — shifts with expanded nav */
+  .hm-shell-header {
+    left: 72px;
+  }
+
+  .hm-app:has(.hm-side-nav--expanded) .hm-shell-header {
+    left: 192px;
   }
 
   .hm-bottom-nav {
@@ -111,81 +279,257 @@ a {
   }
 
   .hm-side-nav {
-    position: fixed;
+    position: sticky;
     top: 0;
-    left: 0;
-    bottom: 0;
+    align-self: flex-start;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    align-items: stretch;
+    gap: 0.18rem;
     width: 72px;
-    padding: 1rem 0.5rem;
-    border-right: 1px solid var(--border);
-    background: var(--bg);
-    overflow: hidden;
+    min-height: 100vh;
+    max-height: 100vh;
+    /* Pull rail content up vs main column; keep in sync with ::after top */
+    --hm-side-rail-pad-pull: 2.1rem;
+    padding-top: calc(var(--hm-fixed-header-offset) - var(--hm-side-rail-pad-pull));
+    padding-bottom: 1rem;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+    border-right: none;
+    background: linear-gradient(180deg, #0a0a0a 0%, #0f0f0f 55%, #0c0c0c 100%);
+    overflow-x: hidden;
+    overflow-y: auto;
     transition: width 180ms ease;
     z-index: 20;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+    --hm-side-rail-brand-h: 1.7rem;
+    /* Air below rail wordmark so nav selection/hover doesn’t crowd it; included in divider top */
+    --hm-side-rail-brand-margin-bottom: 0.38rem;
   }
 
-  .hm-side-nav:hover,
-  .hm-side-nav-pinned {
-    width: 220px;
+  /* Rail top slot: layout icon when collapsed; expanded = wordmark + pin (Claude-style) */
+  .hm-side-rail-brand {
+    position: relative;
+    flex-shrink: 0;
+    height: var(--hm-side-rail-brand-h);
+    margin-top: -0.88rem;
+    margin-bottom: var(--hm-side-rail-brand-margin-bottom);
+    z-index: 1;
   }
 
-  .hm-side-toggle {
-    border: 1px solid var(--border);
-    background: var(--bg-card);
-    color: var(--text-muted);
-    border-radius: 6px;
-    height: 28px;
-    font-size: 11px;
+  .hm-side-rail-brandCollapsed,
+  .hm-side-rail-brandExpanded {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 0;
+    justify-content: center;
+    transition: opacity 150ms ease;
+  }
+
+  .hm-side-rail-brandExpanded {
+    opacity: 0;
+    pointer-events: none;
+    justify-content: stretch;
+    padding-left: 0.1rem;
+    padding-right: 0.1rem;
+  }
+
+  /* Lead column + pin column share 1fr each so the wordmark sits on the true center line */
+  .hm-side-rail-expandedInner {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    column-gap: 0.2rem;
+    width: 100%;
+    min-width: 0;
+    padding-top: 0;
+  }
+
+  .hm-side-rail-expandedLead {
+    min-width: 0;
+    grid-column: 1;
+  }
+
+  .hm-side-rail-expandedInner .hm-rail-wordmark {
+    grid-column: 2;
+    justify-self: center;
+    flex: unset;
+    width: auto;
+    min-width: 0;
+  }
+
+  .hm-side-rail-expandedInner .hm-side-rail-pinBtn {
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  .hm-side-nav--expanded .hm-side-rail-brandCollapsed {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .hm-side-nav--expanded .hm-side-rail-brandExpanded {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .hm-side-rail-iconSvg {
+    color: var(--text-primary);
+    opacity: 0.88;
+    display: block;
+  }
+
+  .hm-side-rail-pinBtn {
+    flex-shrink: 0;
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0.1rem;
+    margin: 0;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
     cursor: pointer;
-    margin: 0 0.35rem 0.6rem;
+    line-height: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .hm-side-rail-pinBtn:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .hm-side-rail-pinBtn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.35);
+    outline-offset: 2px;
+  }
+
+  .hm-side-rail-pinBtn--collapsed {
+    background: transparent;
+  }
+
+  .hm-side-rail-pinBtn--collapsed:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .hm-rail-wordmark {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .hm-rail-wordmark .hm-shell-brand {
+    font-size: clamp(0.9rem, 2vw, 1rem);
+  }
+
+  /* Rail divider: starts below the fixed logo bar (same rhythm as main) + small gap, not through the header strip */
+  .hm-side-nav::after {
+    content: '';
+    position: absolute;
+    top: calc(
+      var(--hm-fixed-header-offset) - var(--hm-side-rail-pad-pull) + var(--hm-side-rail-brand-h) +
+        var(--hm-side-rail-brand-margin-bottom) + 0.04rem
+    );
+    right: 0;
+    bottom: 0;
+    width: 0;
+    border-right: 1px solid var(--border-subtle);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .hm-side-nav--expanded {
+    width: 192px;
   }
 
   .hm-side-link {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    border-radius: 7px;
-    padding: 0.45rem 0.5rem;
-    color: var(--text-fainter);
-    transition: background-color 140ms ease, color 140ms ease;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9px;
+    padding: 0.5rem 0;
+    color: #8a8680;
+    border: 1px solid transparent;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease,
+      border-color 0.15s ease;
     white-space: nowrap;
   }
 
+  .hm-side-nav--expanded .hm-side-link {
+    justify-content: flex-start;
+    padding-left: 0.45rem;
+    padding-right: 0.45rem;
+  }
+
   .hm-side-link:hover {
-    background: var(--bg-hover);
+    background: rgba(255, 255, 255, 0.04);
     color: var(--text-primary);
   }
 
   .hm-side-link-active {
-    color: var(--text-primary);
-    background: var(--bg-hover);
+    color: var(--teal);
+    background: rgba(93, 202, 165, 0.08);
+    border-color: transparent;
   }
 
-  .hm-side-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    border: 1px solid currentColor;
+  .hm-side-link-active:hover {
+    color: var(--teal);
+    background: rgba(93, 202, 165, 0.12);
+    border-color: transparent;
+  }
+
+  .hm-side-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    color: inherit;
   }
 
-  .hm-side-link-active .hm-side-dot {
-    background: var(--text-primary);
+  .hm-side-icon-wrap svg {
+    width: 18px;
+    height: 18px;
+    transition:
+      width 160ms ease,
+      height 160ms ease;
   }
 
+  .hm-side-nav--expanded .hm-side-icon-wrap svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  /* Remove label from flex flow when collapsed so icons sit dead-center in the rail */
   .hm-side-label {
-    font-size: 11px;
-    letter-spacing: 0.03em;
-    opacity: 0;
-    transition: opacity 120ms ease;
+    display: none;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
-  .hm-side-nav:hover .hm-side-label,
-  .hm-side-nav-pinned .hm-side-label {
-    opacity: 1;
+  .hm-side-nav--expanded .hm-side-label {
+    display: inline;
+    max-width: 118px;
+  }
+
+  .hm-shell.hm-shell-wide {
+    max-width: min(1680px, 100%);
   }
 }
 

@@ -42,4 +42,27 @@ api.interceptors.response.use(
   }
 )
 
+export interface DayIntention {
+  id: number
+  day_plan: number | null
+  date: string
+  title: string
+  focus: string
+  purpose: string
+  character: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TaskReflection {
+  id: number
+  task: number
+  note: string
+  what_went_well: string
+  what_missed: string
+  actual_mins: number | null
+  created_at: string
+  updated_at: string
+}
+
 export default api

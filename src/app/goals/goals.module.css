@@ -1,0 +1,499 @@
+/* Match Today + Review: same column width and rhythm as .page in today/review.module.css */
+.page {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0;
+}
+
+/* Same hero rhythm as Review (reflect on your day, …) */
+.hero {
+  margin-bottom: 0;
+}
+
+.heroDate {
+  font-size: 11px;
+  color: #9e9a91;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.heroTitle {
+  font-size: 24px;
+  color: #f2efe8;
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.heroTitle strong {
+  font-weight: 500;
+}
+
+.heroSub {
+  font-size: 13px;
+  color: #9e9a93;
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+.sectionLabel {
+  font-size: 11px;
+  color: #9e9a91;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.addGoalBtn {
+  width: 100%;
+  padding: 12px 14px;
+  margin: 0;
+  background: transparent;
+  border: 1px dashed #3a3a3a;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #9e9a91;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.addGoalBtn:hover {
+  border-color: #4a4a4a;
+  color: #c4bfb6;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.onboardingBanner {
+  background: #1a2a1a;
+  border: 1px solid #0f6e56;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #5dcaa5;
+  line-height: 1.45;
+}
+
+.goalCard {
+  background: var(--bg-card);
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+}
+
+.goalCardPrimary {
+  border-color: #333;
+}
+
+.goalCardInteractive {
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.goalCardInteractive:hover {
+  border-color: #3d3d3d;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.goalCardToolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.goalCardTitle {
+  font-size: var(--fs-body-small);
+  color: #f2efe8;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.goalCardMeta {
+  font-size: 12px;
+  color: #9e9a93;
+  margin-bottom: 10px;
+}
+
+.goalCardStatsRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #76726a;
+}
+
+.goalCardStatsTarget {
+  color: #c4bfb6;
+}
+
+.setPrimaryBtn {
+  font-size: 11px;
+  color: #9e9a91;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 20px;
+  padding: 4px 11px;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.setPrimaryBtn:hover {
+  color: #f2efe8;
+  border-color: #444;
+  background: #1a1a1a;
+}
+
+.deleteBtn {
+  font-size: 11px;
+  color: #9e9a91;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.deleteBtn:hover {
+  color: #d85a30;
+}
+
+.loadingText {
+  font-size: 13px;
+  color: #9e9a93;
+  margin: 0;
+}
+
+/* Centered modal — same horizontal inset as shell padding */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(10, 10, 10, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  box-sizing: border-box;
+}
+
+.modalPanel {
+  width: 100%;
+  max-width: min(520px, 100%);
+  background: #181818;
+  border: 1px solid #333;
+  border-radius: 16px;
+  padding: 22px 22px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-height: min(90vh, 880px);
+  overflow-y: auto;
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.75);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.modalTitle {
+  font-size: 22px;
+  color: #f2efe8;
+  font-weight: 300;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.modalLabel {
+  font-size: 11px;
+  color: #9e9a91;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.modalInput {
+  width: 100%;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 14px;
+  color: #f2efe8;
+  outline: none;
+  font-family: inherit;
+  box-sizing: border-box;
+  line-height: 1.35;
+}
+
+.modalInput::placeholder {
+  color: #6a665e;
+}
+
+.modalInput:focus {
+  border-color: #5dcaa5;
+  box-shadow: 0 0 0 1px rgba(93, 202, 165, 0.22);
+}
+
+.modalInputDate {
+  color-scheme: dark;
+}
+
+.modalSegmentWrap {
+  display: flex;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.modalSegmentBtn {
+  flex: 1;
+  padding: 10px 6px;
+  font-size: 13px;
+  border: none;
+  border-right: 1px solid #2a2a2a;
+  background: transparent;
+  color: #8a8680;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.modalSegmentBtn:last-child {
+  border-right: none;
+}
+
+.modalSegmentBtnActive {
+  background: #1a2a22;
+  color: #5dcaa5;
+}
+
+.modalInsetBox {
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.modalInsetLabel {
+  font-size: 11px;
+  color: #9e9a91;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.modalNumber {
+  width: 64px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  font-weight: 500;
+  color: #f2efe8;
+  outline: none;
+  font-family: inherit;
+}
+
+.modalNumberLg {
+  width: 76px;
+  font-size: 28px;
+}
+
+.modalUnit {
+  font-size: 13px;
+  color: #8a8680;
+}
+
+.modalDivider {
+  height: 1px;
+  background: #2a2a2a;
+  border: none;
+  margin: 0;
+}
+
+.modalCommitCard {
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+.modalCommitHeading {
+  font-size: 11px;
+  color: #8a8680;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+}
+
+.modalCommitRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.modalCommitKey {
+  font-size: 13px;
+  color: #8a8680;
+}
+
+.modalCommitVal {
+  font-size: 14px;
+  color: #f2efe8;
+  font-weight: 500;
+  text-align: right;
+}
+
+.modalCommitValAccent {
+  font-size: 16px;
+  color: #5dcaa5;
+  font-weight: 500;
+}
+
+.modalPrimaryRowTitle {
+  font-size: 14px;
+  color: #c4bfb6;
+}
+
+.modalPrimaryRowHint {
+  font-size: 12px;
+  color: #76726a;
+  margin-top: 4px;
+}
+
+.modalToggle {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  border: 1px solid #3a3a3a;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: #222;
+  padding: 0;
+  font-family: inherit;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.modalToggleOn {
+  background: #2a1800;
+  border-color: #5a3d12;
+}
+
+.modalToggleKnob {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #555;
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  transition:
+    left 0.2s ease,
+    background 0.2s ease;
+}
+
+.modalToggleKnobOn {
+  left: 23px;
+  background: #ef9f27;
+}
+
+.modalFooter {
+  display: flex;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.modalBtnCancel {
+  flex: 1;
+  padding: 12px 14px;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #9e9a91;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.modalBtnCancel:hover {
+  border-color: #444;
+  color: #c4bfb6;
+}
+
+.modalBtnSubmit {
+  flex: 2;
+  padding: 12px 14px;
+  background: #f2efe8;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #141414;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.modalBtnSubmit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.categoryRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.categoryPill {
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  border: 1px solid #333;
+  background: #141414;
+  color: #9e9a91;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.categoryPill:hover {
+  border-color: #444;
+  color: #c4bfb6;
+}
+
+.categoryPillActive {
+  border-color: #2a4a3a;
+  background: #1a2a22;
+  color: #5dcaa5;
+}

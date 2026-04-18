@@ -1,0 +1,849 @@
+.planPageColumn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.planMain {
+  min-width: 0;
+  width: 100%;
+}
+
+.weekBar {
+  background: #0f0f0f;
+  border-bottom: 1px solid #242424;
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: 32px 1fr 32px;
+  align-items: center;
+  gap: 4px;
+}
+
+.weekDayBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  gap: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.weekDayBox:hover {
+  background: #1a1a1a;
+}
+
+.weekDayBoxSelected {
+  border-color: #5dcaa5 !important;
+  background: #0d1f18;
+}
+
+.weekDayBoxSelected .weekDayDow {
+  color: #5dcaa5;
+}
+
+.weekDayDow {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.weekDayNum {
+  font-size: 13px;
+  color: #c8c4bc;
+  font-weight: 500;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weekDayBoxSelected .weekDayNum:not(.weekDayNumToday) {
+  color: #e8e4dc;
+}
+
+.weekDayNumToday {
+  background: #5dcaa5;
+  color: #0f0f0f;
+  border-radius: 50%;
+}
+
+.weekDayDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #5dcaa5;
+}
+
+.weekNavBtn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: #555;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weekNavBtn:hover {
+  background: #1a1a1a;
+  color: #e8e4dc;
+}
+
+.statsRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-bottom: 1px solid #1e1e1e;
+}
+
+.statsGrid {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.statCard {
+  background: #181818;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 12px 14px;
+  min-width: 0;
+}
+
+.statNum {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  color: #e8e4dc;
+}
+
+.statLabel {
+  font-size: 11px;
+  color: #888;
+  margin-top: 3px;
+  line-height: 1.3;
+}
+
+.statBar {
+  height: 3px;
+  background: #1e1e1e;
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.statBarFill {
+  height: 100%;
+  border-radius: 2px;
+  background: #5dcaa5;
+}
+
+.statSub {
+  font-size: 10px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.planCreateBtnCompact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  border: none;
+  background: #f0f0f0;
+  color: #1a1a1a;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.14),
+    0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+.planCreateBtnCompact:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dayHeaderDateWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.dayHeaderDateTrigger {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.dayHeaderDateTrigger:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: #2a2a2a;
+  box-shadow: 0 0 0 1px rgba(93, 202, 165, 0.12);
+}
+
+.dayHeaderDateTrigger[aria-expanded='true'] {
+  background: rgba(93, 202, 165, 0.07);
+  border-color: #3a5a40;
+  box-shadow: 0 0 0 1px rgba(93, 202, 165, 0.2);
+}
+
+.headerCalendarDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  min-width: 288px;
+  padding: 12px;
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+}
+
+.headerCalendarNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.headerCalendarTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e8e4dc;
+}
+
+.headerCalendarNavBtn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #888;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.headerCalendarNavBtn:hover {
+  background: #1a1a1a;
+  color: #e8e4dc;
+}
+
+.headerCalendarDow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 6px;
+  text-align: center;
+  font-size: 10px;
+  color: #666;
+  letter-spacing: 0.04em;
+}
+
+.headerCalendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.headerCalCell {
+  aspect-ratio: 1;
+  max-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: #e8e4dc;
+  position: relative;
+}
+
+.headerCalCellMuted {
+  color: #555;
+  opacity: 0.65;
+}
+
+.headerCalCell:hover:not(.headerCalCellSelected) {
+  background: #1a1a1a;
+}
+
+.headerCalCellSelected {
+  background: #0d1f18;
+  border-color: #5dcaa5;
+  color: #e8e4dc;
+}
+
+.headerCalCellToday:not(.headerCalCellSelected) {
+  box-shadow: inset 0 0 0 1px #5dcaa5;
+}
+
+.headerCalDot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #5dcaa5;
+}
+
+.planCalendarScroll {
+  position: relative;
+  overflow-y: auto;
+  max-height: calc(100vh - 220px);
+}
+
+.dayTimeline {
+  margin-top: 0.5rem;
+}
+
+.dayTimelineCalendar {
+  position: relative;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #2a2a2a;
+  background: #0f0f0f;
+  overflow: hidden;
+}
+
+.planCreatePlus {
+  font-size: 1.35rem;
+  font-weight: 300;
+  line-height: 1;
+  margin-top: -2px;
+}
+
+.planCreateCaret {
+  margin-left: auto;
+  font-size: 9px;
+  opacity: 0.75;
+}
+
+.planTodayBtn {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: var(--bg-card);
+  color: #e8e4dc;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.planTodayBtn:hover {
+  background: var(--bg-hover);
+}
+
+.planNavArrows {
+  display: flex;
+  gap: 2px;
+}
+
+.planNavArrow {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.planNavArrow:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.createOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+
+@keyframes gcModalEnter {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Add task modal — dark theme (matches plan page) */
+.gcAddTaskModal {
+  width: 100%;
+  max-width: 520px;
+  margin: auto;
+  border-radius: 12px;
+  color-scheme: dark;
+  background: #141414;
+  color: #e8e4dc;
+  border: 1px solid #2a2a2a;
+  padding: 4px 22px 18px;
+  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55);
+  max-height: min(640px, 90vh);
+  overflow-y: auto;
+  animation: gcModalEnter 0.2s ease-out;
+}
+
+.gcAddTaskHeader {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 2px;
+}
+
+.gcAddTaskClose {
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  color: #888;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 9999px;
+  margin-right: -6px;
+}
+
+.gcAddTaskClose:hover {
+  background: #252525;
+  color: #e8e4dc;
+}
+
+.gcAddTaskTitleInput {
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  border-bottom: 3px solid #5dcaa5;
+  font-size: 22px;
+  padding: 10px 4px 12px;
+  margin-bottom: 12px;
+  outline: none;
+  color: #e8e4dc;
+  background: transparent;
+}
+
+.gcAddTaskTitleInput::placeholder {
+  color: #666;
+}
+
+.gcAddTaskTitleInput:disabled {
+  opacity: 0.5;
+}
+
+.gcAddTaskDurationRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.gcPill {
+  border: 1px solid #333;
+  background: #181818;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #a0a0a0;
+  cursor: pointer;
+}
+
+.gcPill:hover {
+  background: #222;
+  border-color: #444;
+  color: #e8e4dc;
+}
+
+.gcPillSelected {
+  border: 1px solid #5dcaa5;
+  background: #1a2a24;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #5dcaa5;
+  cursor: pointer;
+}
+
+.gcMinsInput {
+  width: 56px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #e8e4dc;
+  text-align: center;
+  background: #0f0f0f;
+}
+
+.gcAddTaskRow {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.gcAddTaskRowDatetime {
+  align-items: center;
+}
+
+.gcAddTaskRowDatetime .gcAddTaskRowIcon {
+  align-items: center;
+  padding-top: 0;
+}
+
+.gcDatetimeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  row-gap: 8px;
+}
+
+.gcDatePill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid #333;
+  background: #1c1c1c;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.gcDatePill:hover {
+  background: #222;
+  border-color: #444;
+}
+
+.gcDatePillLabel {
+  pointer-events: none;
+  font-size: 13px;
+  font-weight: 450;
+  color: #e8e4dc;
+  white-space: nowrap;
+}
+
+.gcDatePillInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.gcDatePillInput:disabled {
+  cursor: not-allowed;
+}
+
+.gcTimePill {
+  box-sizing: border-box;
+  min-width: 5.85rem;
+  min-height: 32px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  border: 1px solid #333;
+  background: #1c1c1c;
+  font-size: 13px;
+  font-weight: 450;
+  color: #e8e4dc;
+  color-scheme: dark;
+  text-align: center;
+  cursor: pointer;
+}
+
+.gcTimePill:hover:not(:disabled) {
+  background: #222;
+  border-color: #444;
+}
+
+.gcTimePill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gcDatetimeSep {
+  color: #6a6a6a;
+  font-size: 13px;
+  font-weight: 500;
+  user-select: none;
+  flex-shrink: 0;
+  padding: 0 1px;
+}
+
+.gcAllDayBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid #2a3d32;
+  background: #152218;
+  font-size: 13px;
+  color: #5dcaa5;
+  font-weight: 500;
+}
+
+.gcAllDayRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #888;
+  cursor: pointer;
+  user-select: none;
+}
+
+.gcAllDayRow input {
+  cursor: pointer;
+}
+
+.gcAddTaskRowIcon {
+  flex-shrink: 0;
+  width: 40px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+  color: #888;
+}
+
+.gcAddTaskRowBody {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #e8e4dc;
+}
+
+.gcAddTaskTimeMeta {
+  color: #888;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.gcAddTaskMutedLink {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 14px;
+  color: #5dcaa5;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gcAddTaskMutedLink:hover {
+  text-decoration: underline;
+}
+
+.gcAddTaskDesc {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 88px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  color: #e8e4dc;
+  background: #0f0f0f;
+  resize: vertical;
+  outline: none;
+}
+
+.gcAddTaskDesc::placeholder {
+  color: #666;
+}
+
+.gcAddTaskDesc:focus {
+  border-color: #5dcaa5;
+  background: #121212;
+}
+
+.gcAddTaskGoalSelect {
+  width: 100%;
+  max-width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: #e8e4dc;
+  padding: 4px 0;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.gcAddTaskGoalFooterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gcAddTaskGoalFooterName {
+  font-weight: 500;
+  color: #e8e4dc;
+}
+
+.gcAddTaskGoalDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #5dcaa5;
+  flex-shrink: 0;
+}
+
+.gcAddTaskGoalFooterMeta {
+  color: #888;
+  font-size: 13px;
+}
+
+.gcAddTaskFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.gcAddTaskSave {
+  background: #e8e4dc;
+  color: #0f0f0f;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 28px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.gcAddTaskSave:hover:not(:disabled) {
+  background: #f5f1e8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.gcAddTaskSave:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.gcTaskDetailDelete {
+  background: transparent;
+  color: #e07a6a;
+  border: 1px solid #5a3030;
+  border-radius: 24px;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.gcTaskDetailDelete:hover {
+  background: #2a1818;
+  border-color: #7a4040;
+  color: #f09080;
+}
+
+.taskBlockRemove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #e8e4dc;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.taskBlock {
+  cursor: pointer;
+}
+
+.taskBlock:hover .taskBlockRemove,
+.taskBlockRemove:focus {
+  opacity: 1;
+}
+
+.nowLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ea4335;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.timezoneGutter {
+  font-size: 9px;
+  color: #555;
+  text-align: right;
+  padding-right: 6px;
+  padding-bottom: 4px;
+  line-height: 1.2;
+}

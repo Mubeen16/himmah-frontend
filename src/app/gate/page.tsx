@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import HimmahBrand from '@/components/HimmahBrand'
 import api from '@/lib/api'
+import styles from './gate.module.css'
 
 type Verdict = 'parked' | 'pivot' | 'rejected'
 
@@ -13,6 +15,16 @@ interface Goal {
   target_date: string
 }
 
+type ParkedIdea = {
+  id: number
+  title: string
+  description: string
+  triggered_at: string
+  revisit_after: string
+}
+
+type GoalOption = { id: number; title: string }
+
 function monthYear(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
@@ -22,6 +34,19 @@ function dateAfter48HoursText(): string {
   const d = new Date()
   d.setHours(d.getHours() + 48)
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function isToday(dateStr: string): boolean {
+  return dateStr === new Date().toISOString().slice(0, 10)
+}
+
+function isPast(dateStr: string): boolean {
+  return dateStr < new Date().toISOString().slice(0, 10)
+}
+
+function formatRevisitLabel(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function journey(goal: Goal | null) {
@@ -40,6 +65,12 @@ function journey(goal: Goal | null) {
   return { weekCurrent, weekTotal, progress, daysToCheckpoint }
 }
 
+const verdictStyle: Record<Verdict, { color: string; border: string; tint: string }> = {
+  parked: { color: '#888', border: '#2a2a2a', tint: 'rgba(255,255,255,0.04)' },
+  pivot: { color: '#5DCAA5', border: '#0F6E56', tint: 'rgba(93,202,165,0.1)' },
+  rejected: { color: '#D85A30', border: '#993C1D', tint: 'rgba(216,90,48,0.1)' },
+}
+
 export default function GatePage() {
   const router = useRouter()
   const [primaryGoal, setPrimaryGoal] = useState<Goal | null>(null)
@@ -48,11 +79,23 @@ export default function GatePage() {
   const [verdict, setVerdict] = useState<Verdict | null>(null)
   const [saving, setSaving] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submittedPivot, setSubmittedPivot] = useState(false)
+  const [parkedIdeas, setParkedIdeas] = useState<ParkedIdea[]>([])
+  const [goals, setGoals] = useState<GoalOption[]>([])
+  const [pivotGoalId, setPivotGoalId] = useState<number | null>(null)
 
   const j = useMemo(() => journey(primaryGoal), [primaryGoal])
 
   useEffect(() => {
-    void loadPrimaryGoal()
+    void (async () => {
+      await loadPrimaryGoal()
+      const [parkedRes, goalsRes] = await Promise.all([
+        api.get<ParkedIdea[]>('/distractions/', { params: { verdict: 'parked' } }),
+        api.get<GoalOption[]>('/goals/', { params: { status: 'active' } }),
+      ])
+      setParkedIdeas(parkedRes.data ?? [])
+      setGoals(goalsRes.data ?? [])
+    })()
   }, [])
 
   async function loadPrimaryGoal() {
@@ -60,17 +103,34 @@ export default function GatePage() {
     setPrimaryGoal(res.data?.[0] ?? null)
   }
 
+  async function updateVerdict(id: number, newVerdict: 'pivot' | 'rejected') {
+    await api.patch(`/distractions/${id}/`, { verdict: newVerdict })
+    setParkedIdeas(prev => prev.filter(d => d.id !== id))
+  }
+
   async function submitIdea() {
     if (!title.trim() || !verdict) return
     setSaving(true)
     try {
-      await api.post('/distractions/', {
+      const body: {
+        title: string
+        description: string
+        triggered_at: string
+        verdict: Verdict
+        verdict_reason: string
+        goal?: number
+      } = {
         title: title.trim(),
         description: description.trim(),
         triggered_at: new Date().toISOString(),
         verdict,
         verdict_reason: description.trim(),
-      })
+      }
+      if (verdict === 'pivot' && pivotGoalId != null) {
+        body.goal = pivotGoalId
+      }
+      await api.post('/distractions/', body)
+      setSubmittedPivot(verdict === 'pivot')
       setSubmitted(true)
     } finally {
       setSaving(false)
@@ -86,193 +146,203 @@ export default function GatePage() {
 
   function verdictButton(v: Verdict, label: string, sub: string) {
     const selected = verdict === v
-    const styleMap: Record<Verdict, { color: string; border: string; tint: string }> = {
-      parked: { color: '#666', border: '#2a2a2a', tint: 'rgba(255,255,255,0.03)' },
-      pivot: { color: '#5DCAA5', border: '#0F6E56', tint: 'rgba(93,202,165,0.08)' },
-      rejected: { color: '#D85A30', border: '#993C1D', tint: 'rgba(216,90,48,0.08)' },
-    }
-    const c = styleMap[v]
+    const c = verdictStyle[v]
     return (
       <button
         type="button"
+        className={styles.verdictBtn}
         onClick={() => setVerdict(v)}
         style={{
-          flex: 1,
-          background: selected ? c.tint : '#1e1e1e',
+          background: selected ? c.tint : '#1a1a1a',
           color: c.color,
-          border: `1px solid ${c.border}`,
-          borderRadius: '8px',
-          padding: '.55rem .35rem',
-          cursor: 'pointer',
-          opacity: selected ? 1 : 0.9,
+          borderColor: selected ? c.border : '#2a2a2a',
         }}
       >
-        <div style={{ fontSize: '11px', marginBottom: '2px' }}>{label}</div>
-        <div style={{ fontSize: '9px', opacity: 0.7 }}>{sub}</div>
+        <div className={styles.verdictBtnInner}>{label}</div>
+        <div className={styles.verdictBtnSub}>{sub}</div>
       </button>
     )
   }
 
   return (
-    <main
-      style={{
-        maxWidth: '420px',
-        margin: '0 auto',
-        padding: '2rem 1.5rem 1rem',
-        minHeight: '100vh',
-        background: 'var(--bg)',
-      }}
-    >
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '1.25rem',
-        }}
-      >
-        <span style={{ fontSize: '18px', color: 'var(--text-primary)', letterSpacing: '.05em' }}>هِمَّة</span>
-        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>commitment gate</span>
+    <main className={styles.main}>
+      <header className={styles.header}>
+        <button type="button" className={styles.backBtn} onClick={() => router.push('/')} aria-label="Back to today">
+          ← back
+        </button>
+        <div className={styles.headerBrand}>
+          <HimmahBrand />
+        </div>
+        <div className={styles.headerRight}>
+          <div className={styles.kicker}>pause</div>
+          <div className={styles.pageTitle}>commitment gate</div>
+        </div>
       </header>
 
-      <section
-        style={{
-          background: 'var(--bg-card)',
-          border: '1px solid #2a2a2a',
-          borderRadius: '8px',
-          padding: '1rem',
-          marginBottom: '1rem',
-        }}
-      >
-        <div
-          style={{
-            fontSize: '10px',
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '.05em',
-            marginBottom: '.5rem',
-          }}
-        >
+      <section className={styles.card} aria-labelledby="gate-context">
+        <div id="gate-context" className={styles.cardLabel}>
           before you start anything new
         </div>
-        <div style={{ fontSize: '16px', color: 'var(--text-primary)', lineHeight: 1.3, marginBottom: '.65rem' }}>
-          you are on week {j.weekCurrent} of {j.weekTotal}.
+        <div className={styles.statBlock}>
+          you are on week <span className={styles.statNum}>{j.weekCurrent}</span> of {j.weekTotal}.
           <br />
-          {j.daysToCheckpoint} days to next checkpoint.
+          <span className={styles.statNum}>{j.daysToCheckpoint}</span> days to next checkpoint.
         </div>
-        <div style={{ width: '100%', height: '2px', background: 'var(--border)', borderRadius: '1px', marginBottom: '.5rem' }}>
-          <div
-            style={{
-              width: `${j.progress}%`,
-              height: '2px',
-              borderRadius: '1px',
-              background: 'var(--red)',
-            }}
-          />
+        <div className={styles.progressTrack} role="progressbar" aria-valuenow={j.progress} aria-valuemin={0} aria-valuemax={100}>
+          <div className={styles.progressFill} style={{ width: `${j.progress}%` }} />
         </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+        <p className={styles.cardFootnote}>
           skipping today costs you one week. you cannot get it back.
-        </div>
+        </p>
       </section>
 
-      <section style={{ marginBottom: '1rem' }}>
-        <div style={{ fontSize: '10px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '.4rem' }}>
-          what is the idea?
-        </div>
+      <section className={styles.section}>
+        <div className={styles.sectionLabel}>what is the idea?</div>
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="title of the idea"
-          style={{
-            width: '100%',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: '7px',
-            padding: '.55rem .65rem',
-            color: 'var(--text-primary)',
-            fontSize: '12px',
-            marginBottom: '.45rem',
-          }}
+          className={styles.input}
+          autoComplete="off"
         />
         <textarea
           value={description}
           onChange={e => setDescription(e.target.value)}
           placeholder="describe it — what is it and why does it feel urgent?"
-          rows={3}
-          style={{
-            width: '100%',
-            height: '72px',
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: '7px',
-            padding: '.55rem .65rem',
-            color: 'var(--text-primary)',
-            fontSize: '12px',
-            resize: 'none',
-          }}
+          className={styles.textarea}
         />
       </section>
 
-      <section style={{ marginBottom: '1rem' }}>
-        <div style={{ fontSize: '10px', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '.4rem' }}>
-          does this serve the same destination?
-        </div>
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '.75rem' }}>
-          your goal: {primaryGoal?.title ?? 'no primary goal set'} by {primaryGoal ? monthYear(primaryGoal.target_date) : '—'}.
-          does this get you there faster — or somewhere different?
-        </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
+      <section className={styles.section}>
+        <div className={styles.sectionLabel}>does this serve the same destination?</div>
+        <p className={styles.goalLine}>
+          your goal:{' '}
+          <span className={styles.goalTitle}>{primaryGoal?.title ?? 'no primary goal set'}</span> by{' '}
+          {primaryGoal ? monthYear(primaryGoal.target_date) : '—'}. does this get you there faster — or somewhere
+          different?
+        </p>
+        <div className={styles.verdictRow}>
           {verdictButton('parked', 'PARK IT', 'revisit in 48hrs')}
           {verdictButton('pivot', 'PIVOT', 'restructure plan')}
           {verdictButton('rejected', 'REJECT', 'not now ever')}
         </div>
-        {verdict ? <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '.75rem' }}>{verdictMessage()}</div> : null}
+        {verdict === 'pivot' ? (
+          <div>
+            <div
+              style={{
+                fontSize: '10px',
+                color: '#444',
+                textTransform: 'uppercase',
+                marginTop: '0.75rem',
+                marginBottom: '0.4rem',
+              }}
+            >
+              which goal does this connect to?
+            </div>
+            <select
+              value={pivotGoalId ?? ''}
+              onChange={e => {
+                const v = e.target.value
+                setPivotGoalId(v === '' ? null : Number(v))
+              }}
+              style={{
+                width: '100%',
+                background: '#181818',
+                border: '1px solid #242424',
+                borderRadius: '7px',
+                padding: '0.5rem 0.65rem',
+                fontSize: '13px',
+                color: '#e8e4dc',
+              }}
+            >
+              <option value="">select a goal</option>
+              {goals.map(g => (
+                <option key={g.id} value={g.id}>
+                  {g.title}
+                </option>
+              ))}
+            </select>
+            <div style={{ fontSize: '11px', color: '#555', marginTop: '0.35rem' }}>
+              after logging this pivot go to /plan and restructure tomorrow
+            </div>
+          </div>
+        ) : null}
+        {verdict ? <div className={styles.verdictHint}>{verdictMessage()}</div> : null}
       </section>
 
       {!submitted ? (
         <button
           type="button"
+          className={styles.primaryBtn}
           onClick={() => void submitIdea()}
           disabled={!title.trim() || !verdict || saving}
-          style={{
-            width: '100%',
-            background: 'var(--text-primary)',
-            color: 'var(--bg)',
-            border: 'none',
-            borderRadius: '7px',
-            padding: '.7rem',
-            fontSize: '12px',
-            fontWeight: 500,
-            cursor: !title.trim() || !verdict || saving ? 'not-allowed' : 'pointer',
-            opacity: !title.trim() || !verdict || saving ? 0.45 : 1,
-          }}
         >
           {saving ? 'logging...' : 'log this idea'}
         </button>
-      ) : (
-        <div>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '.6rem' }}>
-            logged. now go back.
+      ) : submittedPivot ? (
+        <div className={styles.successWrap}>
+          <div className={styles.successIcon} aria-hidden>
+            ✓
           </div>
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            style={{
-              width: '100%',
-              background: 'var(--text-primary)',
-              color: 'var(--bg)',
-              border: 'none',
-              borderRadius: '7px',
-              padding: '.7rem',
-              fontSize: '12px',
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
+          <p className={styles.successText}>pivot logged. now go to plan and restructure tomorrow.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <button type="button" className={styles.primaryBtn} onClick={() => router.push('/plan')}>
+              go to plan
+            </button>
+            <button type="button" className={styles.primaryBtn} onClick={() => router.push('/')}>
+              back to today
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.successWrap}>
+          <div className={styles.successIcon} aria-hidden>
+            ✓
+          </div>
+          <p className={styles.successText}>logged. now go back to today.</p>
+          <button type="button" className={styles.primaryBtn} onClick={() => router.push('/')}>
             back to today
           </button>
         </div>
       )}
+
+      {parkedIdeas.length > 0 ? (
+        <section className={styles.parkedSection} aria-label="Parked ideas">
+          <div className={styles.parkedLabel}>parked ideas</div>
+          {parkedIdeas.map(idea => {
+            const ra = idea.revisit_after?.slice(0, 10) ?? ''
+            const metaClass = isToday(ra) ? styles.metaToday : isPast(ra) ? styles.metaPast : styles.metaFuture
+            return (
+              <div key={idea.id} className={styles.parkedCard}>
+                <div className={styles.parkedTitle}>{idea.title}</div>
+                <div className={`${styles.parkedMeta} ${metaClass}`}>
+                  {isToday(ra)
+                    ? 'revisit today'
+                    : isPast(ra)
+                      ? `overdue since ${formatRevisitLabel(ra)}`
+                      : `revisit on ${formatRevisitLabel(ra)}`}
+                </div>
+                <div className={styles.parkedActions}>
+                  <button
+                    type="button"
+                    className={`${styles.parkedBtn} ${styles.parkedBtnPivot}`}
+                    onClick={() => void updateVerdict(idea.id, 'pivot')}
+                  >
+                    still relevant → pivot
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.parkedBtn} ${styles.parkedBtnReject}`}
+                    onClick={() => void updateVerdict(idea.id, 'rejected')}
+                  >
+                    no longer relevant → reject
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </section>
+      ) : null}
     </main>
   )
 }

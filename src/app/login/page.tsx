@@ -3,6 +3,7 @@
 import axios from 'axios'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import HimmahBrand from '@/components/HimmahBrand'
 import { login } from '@/lib/auth'
 
 export default function LoginPage() {
@@ -64,17 +65,9 @@ export default function LoginPage() {
           padding: '1.5rem',
         }}
       >
-        <h1
-          style={{
-            fontFamily: 'var(--font-arabic), -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
-            fontSize: '30px',
-            lineHeight: 1,
-            color: 'var(--teal)',
-            marginBottom: '.5rem',
-          }}
-        >
-          هِمَّة
-        </h1>
+        <div style={{ marginBottom: '.75rem', color: 'var(--text-primary)' }}>
+          <HimmahBrand />
+        </div>
         <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>
           sign in to continue
         </p>

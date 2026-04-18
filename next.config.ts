@@ -5,6 +5,9 @@ import type { NextConfig } from "next";
 const appDir = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [{ source: '/today', destination: '/', permanent: false }]
+  },
   turbopack: {
     root: appDir,
   },

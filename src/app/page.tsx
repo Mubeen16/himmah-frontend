@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
+import styles from './today.module.css'
 
 interface Goal {
   id: number
@@ -18,11 +19,33 @@ interface Goal {
 interface Task {
   id: number
   goal: number | null
-  goal_detail: { id: number; title: string; category: string } | null
+  goal_detail: { id: number; title: string; category: string; is_primary?: boolean } | null
   title: string
+  description?: string
   estimated_mins: number
+  order: number
   done: boolean
   done_at: string | null
+  planned_start_time?: string | null
+  planned_end_time?: string | null
+  is_all_day?: boolean
+  task_reflection?: {
+    id: number
+    note: string
+    what_went_well: string
+    what_missed: string
+    actual_mins: number | null
+  } | null
+}
+
+interface DayIntention {
+  id: number
+  day_plan: number | null
+  date: string
+  title: string
+  focus: string
+  purpose: string
+  character: string
 }
 
 interface DayPlan {
@@ -36,24 +59,46 @@ interface DayPlan {
 }
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function formatDateLabel(d: Date): string {
-  return d
-    .toLocaleDateString('en-GB', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
-    .toLowerCase()
+  return d.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+/** Sentence case: first character upper, rest unchanged (locale strings stay natural). */
+function capitalizeFirstLetter(text: string): string {
+  const t = text.trim()
+  if (!t) return t
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
+
+function formatTimeLabelDisplay(raw: string): string {
+  return raw.replace(/\s*(am|pm)\s*$/i, m => m.trim().toUpperCase())
+}
+
+function parseIsoLocal(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function addDaysIso(iso: string, delta: number): string {
+  const dt = parseIsoLocal(iso)
+  dt.setDate(dt.getDate() + delta)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
 }
 
 function greetingByHour(hour: number, name: string): string {
   if (hour < 12) return `good morning, ${name}`
   if (hour < 17) return `keep going, ${name}`
-  if (hour < 21) return `time to reflect, ${name}`
+  /* Evening on Today is still “execute” — save reflect language for /review */
+  if (hour < 21) return `keep pushing, ${name}`
   return `plan tomorrow before you sleep, ${name}`
 }
 
@@ -62,6 +107,40 @@ function minutesToText(totalMinutes: number): string {
   const mins = totalMinutes % 60
   if (mins === 0) return `${hours}h left`
   return `${hours}h ${mins}m left`
+}
+
+function moveTaskInList<T>(items: T[], from: number, toBefore: number): T[] {
+  const n = items.length
+  if (from < 0 || from >= n) return items
+  const clamped = Math.max(0, Math.min(toBefore, n))
+  const next = [...items]
+  const [item] = next.splice(from, 1)
+  let insertAt = clamped
+  if (from < clamped) insertAt = clamped - 1
+  insertAt = Math.max(0, Math.min(insertAt, next.length))
+  next.splice(insertAt, 0, item)
+  return next
+}
+
+function goalBadgeForTask(
+  goal: Task['goal_detail'],
+  primaryGoalId: number | null
+): { label: string; className: string } | null {
+  if (!goal) return null
+  const isPrimary = goal.is_primary === true || (primaryGoalId != null && goal.id === primaryGoalId)
+  if (isPrimary) return { label: 'primary', className: styles.goalBadgePrimary }
+  const cat = (goal.category || 'professional').toLowerCase()
+  const map: Record<string, string> = {
+    professional: styles.goalBadgeProfessional,
+    engineering: styles.goalBadgeProfessional,
+    spiritual: styles.goalBadgeSpiritual,
+    family: styles.goalBadgeFamily,
+    health: styles.goalBadgeHealth,
+  }
+  return {
+    label: cat,
+    className: map[cat] ?? styles.goalBadgeProfessional,
+  }
 }
 
 function calcJourney(goal: Goal): { weekCurrent: number; weekTotal: number; progress: number } {
@@ -84,25 +163,59 @@ export default function TodayPage() {
   const [energy, setEnergy] = useState<number | null>(null)
   const [clarity, setClarity] = useState<number | null>(null)
   const [sleep, setSleep] = useState<number | null>(null)
+  const [viewDate, setViewDate] = useState(() => todayIso())
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const datePopoverRef = useRef<HTMLDivElement>(null)
   const [hour, setHour] = useState(new Date().getHours())
+  const [timeLabel, setTimeLabel] = useState(() =>
+    new Date().toLocaleTimeString('en-GB', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }),
+  )
   const [name, setName] = useState('Mubeen')
   const [busyTaskId, setBusyTaskId] = useState<number | null>(null)
+  const [parkedTodayCount, setParkedTodayCount] = useState(0)
+  const [dayIntention, setDayIntention] = useState<DayIntention | null>(null)
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [dropBeforeIndex, setDropBeforeIndex] = useState<number | null>(null)
+  const [orderSaving, setOrderSaving] = useState(false)
+  const sortedTasksRef = useRef<Task[]>([])
+  const dropBeforeRef = useRef<number | null>(null)
+  const [reflectionTask, setReflectionTask] = useState<Task | null>(null)
+  const [reflNote, setReflNote] = useState('')
+  const [reflWentWell, setReflWentWell] = useState('')
+  const [reflMissed, setReflMissed] = useState('')
+  const [reflActualMins, setReflActualMins] = useState<number | string>('')
+  const [reflSaving, setReflSaving] = useState(false)
+  const firstPlanFetch = useRef(true)
 
-  const loadToday = useCallback(async () => {
-    const date = todayIso()
-    const [planRes, goalsRes] = await Promise.all([
+  const loadForDate = useCallback(async (date: string) => {
+    const [planRes, goalsRes, intentionRes] = await Promise.all([
       api.get<DayPlan[]>('/dayplans/', { params: { date } }),
       api.get<Goal[]>('/goals/', { params: { status: 'active' } }),
+      api.get<DayIntention[]>('/dayintentions/', { params: { date } }),
     ])
 
     const todaysPlan = planRes.data[0] ?? null
     const goalData = goalsRes.data ?? []
 
+    setDayIntention(intentionRes.data[0] ?? null)
     setPlan(todaysPlan)
     setGoals(goalData.filter(g => g.status === 'active'))
     setEnergy(todaysPlan?.morning_energy ?? null)
     setClarity(todaysPlan?.morning_clarity ?? null)
     setSleep(todaysPlan?.sleep_quality ?? null)
+
+    const disRes = await api.get('/distractions/', {
+      params: { verdict: 'parked' },
+    })
+    const parkedToday = (disRes.data ?? []).filter(
+      (d: { revisit_after: string | null }) => d.revisit_after?.slice(0, 10) === date
+    )
+    setParkedTodayCount(parkedToday.length)
+
     setLoading(false)
     return goalData
   }, [])
@@ -110,23 +223,63 @@ export default function TodayPage() {
   useEffect(() => {
     const username = localStorage.getItem('username')
     if (username) setName(username)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
     ;(async () => {
       try {
-        const goalData = await loadToday()
+        if (firstPlanFetch.current) setLoading(true)
+        const goalData = await loadForDate(viewDate)
+        if (cancelled) return
         if (goalData.length === 0) {
           router.push('/goals?onboarding=true')
           return
         }
       } catch {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
+      } finally {
+        if (!cancelled) setLoading(false)
+        firstPlanFetch.current = false
       }
     })()
-  }, [loadToday])
+    return () => {
+      cancelled = true
+    }
+  }, [viewDate, loadForDate, router])
 
   useEffect(() => {
-    const timer = window.setInterval(() => setHour(new Date().getHours()), 1000 * 30)
+    if (!calendarOpen) return
+    const onDocDown = (e: MouseEvent) => {
+      const el = datePopoverRef.current
+      if (el && !el.contains(e.target as Node)) setCalendarOpen(false)
+    }
+    document.addEventListener('mousedown', onDocDown)
+    return () => document.removeEventListener('mousedown', onDocDown)
+  }, [calendarOpen])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setHour(new Date().getHours())
+      setTimeLabel(
+        new Date().toLocaleTimeString('en-GB', {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        }),
+      )
+    }, 1000 * 30)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    if (!reflectionTask) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setReflectionTask(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [reflectionTask])
 
   const primaryGoal = useMemo(() => {
     const byFlag = goals.find(g => g.is_primary === true)
@@ -134,15 +287,27 @@ export default function TodayPage() {
     return goals.find(g => g.parent_goal === null) ?? null
   }, [goals])
 
+  const sortedTasks = useMemo(() => {
+    if (!plan?.tasks) return []
+    return [...plan.tasks].sort((a, b) => {
+      const o = (a.order ?? 0) - (b.order ?? 0)
+      return o !== 0 ? o : a.id - b.id
+    })
+  }, [plan?.tasks])
+
+  sortedTasksRef.current = sortedTasks
+
   const journey = primaryGoal ? calcJourney(primaryGoal) : null
-  const dateLabel = formatDateLabel(new Date())
+  const viewDateObj = useMemo(() => parseIsoLocal(viewDate), [viewDate])
+  const dateLabel = formatDateLabel(viewDateObj)
+  const isViewingToday = viewDate === todayIso()
   const greeting = greetingByHour(hour, name)
-  const showMorning = hour < 12 && plan !== null
+  const showMorning = plan !== null
 
   const doneCount = plan?.tasks.filter(t => t.done).length ?? 0
-  const totalCount = plan?.tasks.length ?? 0
+  const totalCount = sortedTasks.length
   const remainingMinutes =
-    plan?.tasks.filter(t => !t.done).reduce((sum, t) => sum + t.estimated_mins, 0) ?? 0
+    sortedTasks.filter(t => !t.done).reduce((sum, t) => sum + t.estimated_mins, 0)
   const progressPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
 
   async function patchMorning(next: {
@@ -166,386 +331,741 @@ export default function TodayPage() {
       } else {
         await api.post(`/tasks/${task.id}/mark_done/`)
       }
-      await loadToday()
+      await loadForDate(viewDate)
     } finally {
       setBusyTaskId(null)
     }
   }
 
+  function openReflection(task: Task) {
+    setReflectionTask(task)
+    setReflNote(task.task_reflection?.note ?? '')
+    setReflWentWell(task.task_reflection?.what_went_well ?? '')
+    setReflMissed(task.task_reflection?.what_missed ?? '')
+    setReflActualMins(task.task_reflection?.actual_mins ?? '')
+  }
+
+  async function markDoneWithReflection() {
+    if (!reflectionTask) return
+    setReflSaving(true)
+    try {
+      if (reflectionTask.task_reflection) {
+        await api.patch(`/taskreflections/${reflectionTask.task_reflection.id}/`, {
+          note: reflNote,
+          what_went_well: reflWentWell,
+          what_missed: reflMissed,
+          actual_mins: reflActualMins !== '' ? Number(reflActualMins) : null,
+        })
+      } else {
+        await api.post('/taskreflections/', {
+          task: reflectionTask.id,
+          note: reflNote,
+          what_went_well: reflWentWell,
+          what_missed: reflMissed,
+          actual_mins: reflActualMins !== '' ? Number(reflActualMins) : null,
+        })
+      }
+      if (!reflectionTask.done) {
+        await api.post(`/tasks/${reflectionTask.id}/mark_done/`)
+      }
+      setReflectionTask(null)
+      await loadForDate(viewDate)
+    } finally {
+      setReflSaving(false)
+    }
+  }
+
+  async function saveReflectionOnly() {
+    if (!reflectionTask) return
+    setReflSaving(true)
+    try {
+      if (reflectionTask.task_reflection) {
+        await api.patch(`/taskreflections/${reflectionTask.task_reflection.id}/`, {
+          note: reflNote,
+          what_went_well: reflWentWell,
+          what_missed: reflMissed,
+          actual_mins: reflActualMins !== '' ? Number(reflActualMins) : null,
+        })
+      } else {
+        await api.post('/taskreflections/', {
+          task: reflectionTask.id,
+          note: reflNote,
+          what_went_well: reflWentWell,
+          what_missed: reflMissed,
+          actual_mins: reflActualMins !== '' ? Number(reflActualMins) : null,
+        })
+      }
+      setReflectionTask(null)
+      await loadForDate(viewDate)
+    } finally {
+      setReflSaving(false)
+    }
+  }
+
+  const clearDragState = useCallback(() => {
+    setDraggingIndex(null)
+    setDropBeforeIndex(null)
+    dropBeforeRef.current = null
+  }, [])
+
+  const handleTaskDragStart =
+    (index: number) => (e: React.DragEvent) => {
+      if (orderSaving) return
+      e.dataTransfer.setData('text/plain', String(index))
+      e.dataTransfer.effectAllowed = 'move'
+      setDraggingIndex(index)
+      setDropBeforeIndex(null)
+      dropBeforeRef.current = null
+    }
+
+  const handleTaskRowDragOver = useCallback(
+    (index: number) => (e: React.DragEvent) => {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+      if (draggingIndex === null) return
+      const el = e.currentTarget as HTMLElement
+      const rect = el.getBoundingClientRect()
+      const mid = rect.top + rect.height / 2
+      const before = e.clientY < mid ? index : index + 1
+      dropBeforeRef.current = before
+      setDropBeforeIndex(before)
+    },
+    [draggingIndex]
+  )
+
+  const handleTasksAreaDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }, [])
+
+  const persistTaskReorder = useCallback(
+    async (from: number, toBefore: number) => {
+      const current = sortedTasksRef.current
+      if (!plan || orderSaving || current.length === 0) return
+      const next = moveTaskInList(current, from, toBefore)
+      const unchanged = next.every((t, i) => t.id === current[i].id)
+      if (unchanged) return
+      const withOrder = next.map((t, i) => ({ ...t, order: i }))
+      setPlan({ ...plan, tasks: withOrder })
+      setOrderSaving(true)
+      try {
+        await Promise.all(withOrder.map((t, i) => api.patch(`/tasks/${t.id}/`, { order: i })))
+      } catch {
+        await loadForDate(viewDate)
+      } finally {
+        setOrderSaving(false)
+      }
+    },
+    [plan, orderSaving, loadForDate, viewDate]
+  )
+
+  const handleTaskDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      const raw = e.dataTransfer.getData('text/plain')
+      const from = raw === '' ? NaN : Number(raw)
+      const toBefore = dropBeforeRef.current
+      if (Number.isNaN(from) || toBefore === null) {
+        clearDragState()
+        return
+      }
+      void persistTaskReorder(from, toBefore)
+      clearDragState()
+    },
+    [clearDragState, persistTaskReorder]
+  )
+
+  const handleTaskDragEnd = useCallback(() => {
+    clearDragState()
+  }, [clearDragState])
+
+  const renderHeroDateBar = () => (
+    <div className={styles.heroDateWrap} ref={datePopoverRef}>
+      <button
+        type="button"
+        className={styles.heroDateTrigger}
+        onClick={() => setCalendarOpen(o => !o)}
+        aria-expanded={calendarOpen}
+        aria-haspopup="dialog"
+        aria-label="Choose day to view"
+      >
+        <span className={styles.heroDateText}>{dateLabel}</span>
+        <span className={styles.heroDateSep}>·</span>
+        <span className={styles.heroDateText}>{formatTimeLabelDisplay(timeLabel)}</span>
+      </button>
+      {calendarOpen ? (
+        <div className={styles.heroDatePopover} role="dialog" aria-label="Pick a day">
+          <div className={styles.heroDateNav}>
+            <button
+              type="button"
+              className={styles.heroDateNavBtn}
+              onClick={() => setViewDate(d => addDaysIso(d, -1))}
+            >
+              ← prev
+            </button>
+            {!isViewingToday ? (
+              <button
+                type="button"
+                className={styles.heroDateNavBtn}
+                onClick={() => setViewDate(todayIso())}
+              >
+                today
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={styles.heroDateNavBtn}
+              onClick={() => setViewDate(d => addDaysIso(d, 1))}
+            >
+              next →
+            </button>
+          </div>
+          <label className={styles.heroDatePickRow}>
+            <span className={styles.heroDatePickLabel}>jump to</span>
+            <input
+              type="date"
+              className={styles.heroDateInput}
+              value={viewDate}
+              onChange={e => setViewDate(e.target.value)}
+            />
+          </label>
+          <p className={styles.heroDateHint}>Load that day&apos;s plan and tasks here.</p>
+        </div>
+      ) : null}
+    </div>
+  )
+
   if (loading) {
     return (
-      <Shell>
-        <p style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-muted)' }}>loading...</p>
+      <Shell wide>
+        <div className={styles.page}>
+          <p style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-secondary)' }}>loading...</p>
+        </div>
       </Shell>
     )
   }
 
   if (!plan) {
     return (
-      <Shell>
-        <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-          {dateLabel}
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--fs-hero)',
-            color: 'var(--text-primary)',
-            fontWeight: 400,
-            marginBottom: '0.4rem',
-            lineHeight: 1.2,
-            fontFamily: greeting.startsWith('السلام') ? 'var(--font-arabic)' : undefined,
-          }}
-        >
-          {greeting}
-        </div>
-        <div
-          style={{
-            fontSize: 'var(--fs-meta)',
-            color: 'var(--text-muted)',
-            marginBottom: '1.25rem',
-            lineHeight: 1.5,
-          }}
-        >
-          you didn&apos;t plan last night. that is already a miss.
-        </div>
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid #2a2a2a',
-            borderRadius: '8px',
-            padding: '1rem',
-            marginBottom: '1.25rem',
-          }}
-        >
-          <div
-            style={{
-              fontSize: 'var(--fs-body-small)',
-              color: 'var(--text-primary)',
-              marginBottom: '0.4rem',
-              fontWeight: 500,
-            }}
-          >
-            no plan for today
+      <Shell wide>
+        <div className={styles.page}>
+          <div className={styles.hero}>
+            {renderHeroDateBar()}
+            <div
+              className={styles.heroGreeting}
+              style={greeting.startsWith('السلام') ? { fontFamily: 'var(--font-arabic)' } : undefined}
+            >
+              {capitalizeFirstLetter(greeting.split(',')[0])},{' '}
+              <span className={styles.heroGreetingName}>{capitalizeFirstLetter(name)}</span>
+            </div>
           </div>
-          <p style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            a day without a plan is a day you hand to distraction. do it now.
-          </p>
+          <div className={styles.noPlanCard}>
+            <div className={styles.noPlanTitle}>
+              {isViewingToday ? 'no plan for today' : 'no plan for this day'}
+            </div>
+            <p className={styles.noPlanText}>a day without a plan is a day you hand to distraction. do it now.</p>
+          </div>
+          <button type="button" className={styles.noPlanBtn} onClick={() => router.push('/plan')}>
+            plan today now
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => router.push('/plan')}
-          style={{
-            width: '100%',
-            border: 'none',
-            borderRadius: '7px',
-            background: 'var(--text-primary)',
-            color: 'var(--bg)',
-            padding: '0.75rem',
-            fontSize: 'var(--fs-meta)',
-            fontWeight: 500,
-            cursor: 'pointer',
-            marginBottom: '0.5rem',
-          }}
-        >
-          plan today now
-        </button>
       </Shell>
     )
   }
 
   return (
-    <Shell>
-      {journey && primaryGoal ? (
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            borderRadius: '7px',
-            padding: '0.65rem 0.75rem',
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: '1rem',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-muted)' }}>your journey</div>
-            <div
-              style={{
-                fontSize: 'var(--fs-body-small)',
-                color: 'var(--text-primary)',
-                marginTop: '1px',
-                fontWeight: 500,
-              }}
-            >
-              week {journey.weekCurrent} of {journey.weekTotal}
-            </div>
-            <div
-              style={{
-                width: '70px',
-                height: '2px',
-                background: 'var(--border)',
-                borderRadius: '1px',
-                marginTop: '3px',
-              }}
-            >
-              <div
-                style={{
-                  height: '2px',
-                  borderRadius: '1px',
-                  background: 'var(--teal)',
-                  width: `${journey.progress}%`,
-                }}
-              />
-            </div>
-          </div>
-          <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-faint)', textAlign: 'right' }}>
-            {new Date(primaryGoal.target_date).toLocaleDateString('en-US', {
-              month: 'short',
-              year: 'numeric',
-            })}
-            <br />
-            {primaryGoal.title}
-          </div>
-        </div>
-      ) : null}
-
-      {showMorning ? (
-        <div
-          style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: '7px',
-            padding: '0.75rem',
-            marginBottom: '1.25rem',
-          }}
-        >
+    <Shell wide>
+      <div className={styles.page}>
+        <div className={styles.hero}>
+          {renderHeroDateBar()}
           <div
-            style={{
-              fontSize: 'var(--fs-micro)',
-              color: 'var(--text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.03em',
-              marginBottom: '0.6rem',
-            }}
+            className={styles.heroGreeting}
+            style={greeting.startsWith('السلام') ? { fontFamily: 'var(--font-arabic)' } : undefined}
           >
-            how are you this morning?
+            {capitalizeFirstLetter(greeting.split(',')[0])},{' '}
+            <span className={styles.heroGreetingName}>{capitalizeFirstLetter(name)}</span>
           </div>
-          {[
-            { key: 'energy', label: 'energy', value: energy },
-            { key: 'clarity', label: 'clarity', value: clarity },
-            { key: 'sleep', label: 'sleep', value: sleep },
-          ].map(row => (
-            <div
-              key={row.key}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: row.key === 'sleep' ? 0 : '0.4rem',
-              }}
-            >
-              <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-secondary)' }}>
-                {row.label}
-              </span>
-              <div style={{ display: 'flex', gap: '3px' }}>
-                {[1, 2, 3, 4, 5].map(dot => (
-                  <button
-                    key={dot}
-                    type="button"
-                    onClick={() => {
-                      const next = {
-                        morning_energy: row.key === 'energy' ? dot : energy,
-                        morning_clarity: row.key === 'clarity' ? dot : clarity,
-                        sleep_quality: row.key === 'sleep' ? dot : sleep,
-                      }
-                      void patchMorning(next)
-                    }}
-                    style={{
-                      width: '18px',
-                      height: '3px',
-                      borderRadius: '2px',
-                      border: 'none',
-                      background: (row.value ?? 0) >= dot ? 'var(--teal)' : 'var(--border)',
-                      cursor: 'pointer',
-                    }}
-                    aria-label={`${row.label} ${dot}`}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
         </div>
-      ) : null}
 
-      <div style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>
-        {dateLabel}
-      </div>
-      <div
-        style={{
-          fontSize: 'var(--fs-hero)',
-          color: 'var(--text-primary)',
-          fontWeight: 400,
-          marginBottom: '0.4rem',
-          lineHeight: 1.2,
-          fontFamily: greeting.startsWith('السلام') ? 'var(--font-arabic)' : undefined,
-        }}
-      >
-        {greeting}
-      </div>
-
-      {plan.intention ? (
-        <div
-          style={{
-            fontSize: 'var(--fs-meta)',
-            color: 'var(--text-secondary)',
-            fontStyle: 'italic',
-            lineHeight: 1.5,
-            paddingLeft: '0.6rem',
-            borderLeft: '1px solid #2a2a2a',
-            marginBottom: '1.25rem',
-          }}
-        >
-          &quot;{plan.intention}&quot;
-        </div>
-      ) : null}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <div style={{ flex: 1, height: '2px', background: 'var(--border)', borderRadius: '1px' }}>
-          <div
-            style={{
-              height: '2px',
-              background: 'var(--accent)',
-              borderRadius: '1px',
-              width: `${progressPct}%`,
-            }}
-          />
-        </div>
-        <span style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-primary)' }}>
-          {doneCount}/{totalCount}
-        </span>
-        <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-muted)' }}>
-          · {minutesToText(remainingMinutes)}
-        </span>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '1.25rem' }}>
-        {plan.tasks.map(task => {
-          const goalName = task.goal_detail?.title ?? null
-          return (
-            <button
-              key={task.id}
-              type="button"
-              onClick={() => void toggleTask(task)}
-              disabled={busyTaskId === task.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                width: '100%',
-                textAlign: 'left',
-                background: 'transparent',
-                padding: '0.6rem',
-                borderRadius: '7px',
-                border: '1px solid var(--border-subtle)',
-                cursor: 'pointer',
-                opacity: task.done ? 0.3 : 1,
-              }}
-            >
-              <span
+        {(journey && primaryGoal) || showMorning ? (
+        <div className={styles.contextRow}>
+          {journey && primaryGoal ? (
+            <div className={styles.journey}>
+              <div
+                className={styles.journeyBgText}
                 style={{
-                  width: '14px',
-                  height: '14px',
-                  borderRadius: '3px',
-                  border: task.done ? '1px solid var(--accent)' : '1px solid #333',
-                  background: task.done ? 'var(--accent)' : 'transparent',
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  paddingLeft: 16,
+                  paddingRight: 16,
+                  maxWidth: '100%',
                 }}
               >
-                {task.done ? (
-                  <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden>
-                    <path
-                      d="M2 5l2.5 2.5L8 3"
-                      stroke="#ffffff"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                ) : null}
-              </span>
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span
-                  style={{
-                    fontSize: 'var(--fs-body-small)',
-                    color: task.done ? 'var(--text-faint)' : 'var(--text-primary)',
-                    textDecoration: task.done ? 'line-through' : 'none',
-                    display: 'block',
-                    lineHeight: 1.35,
-                  }}
-                >
-                  {task.title}
-                </span>
-                <span
-                  style={{
-                    fontSize: 'var(--fs-meta)',
-                    color: 'var(--text-fainter)',
-                    marginTop: '1px',
-                    display: 'block',
-                  }}
-                >
-                  ↳ {goalName ?? 'general'}
-                </span>
-              </span>
-              <span style={{ fontSize: 'var(--fs-meta)', color: 'var(--text-faint)', flexShrink: 0 }}>
-                {task.estimated_mins}m
-              </span>
+                {primaryGoal.title}
+              </div>
+              <div className={styles.journeyTop}>
+                <div className={styles.journeyLabel}>primary goal</div>
+                <div className={styles.journeyDate}>
+                  {new Date(primaryGoal.target_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                </div>
+              </div>
+              <div className={styles.journeyBottom}>
+                <div className={styles.journeyWeek}>
+                  week {journey.weekCurrent}{' '}
+                  <span className={styles.journeyWeekSub}>/ {journey.weekTotal}</span>
+                </div>
+                <div className={styles.journeyBarWrap}>
+                  <div className={styles.journeyBarFill} style={{ width: `${journey.progress}%` }} />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {showMorning ? (
+            <div className={styles.checkin}>
+              <div className={styles.checkinLabel}>today</div>
+              {[
+                { key: 'energy', label: 'energy', value: energy },
+                { key: 'clarity', label: 'clarity', value: clarity },
+                { key: 'sleep', label: 'sleep', value: sleep },
+              ].map(row => (
+                <div key={row.key} className={styles.checkinRow}>
+                  <span className={styles.checkinName}>{row.label}</span>
+                  <div className={styles.checkinDots}>
+                    {[1, 2, 3, 4, 5].map(dot => (
+                      <button
+                        key={dot}
+                        type="button"
+                        className={`${styles.checkinDot} ${
+                          typeof row.value === 'number' && row.value >= dot ? styles.checkinDotOn : ''
+                        }`}
+                        onClick={() => {
+                          const next = {
+                            morning_energy: row.key === 'energy' ? dot : energy,
+                            morning_clarity: row.key === 'clarity' ? dot : clarity,
+                            sleep_quality: row.key === 'sleep' ? dot : sleep,
+                          }
+                          void patchMorning(next)
+                        }}
+                        aria-label={`${row.label} ${dot}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        ) : null}
+
+        {dayIntention ? <div className={styles.intention}>{dayIntention.title}</div> : null}
+
+        <div>
+          <div className={styles.tasksHeader}>
+            <div className={styles.tasksTitle}>execute</div>
+            <div className={styles.tasksStats}>
+              <span className={styles.tasksCount}>{doneCount}</span>
+              <span className={styles.tasksTotal}>/ {totalCount}</span>
+              <span className={styles.tasksTime}>· {minutesToText(remainingMinutes)}</span>
+            </div>
+          </div>
+          <div className={styles.progressBar}>
+            <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
+          </div>
+          <div
+            className={styles.tasks}
+            onDragOver={handleTasksAreaDragOver}
+            onDrop={e => {
+              e.preventDefault()
+              handleTaskDrop(e)
+            }}
+          >
+            {sortedTasks.map((task, index) => {
+              const goalName = task.goal_detail?.title ?? null
+              const timeLabel = task.is_all_day
+                ? 'all day'
+                : task.planned_start_time && task.planned_end_time
+                  ? `${task.planned_start_time.slice(0, 5)} – ${task.planned_end_time.slice(0, 5)}`
+                  : null
+              const badge = goalBadgeForTask(task.goal_detail, primaryGoal?.id ?? null)
+              const showInsert =
+                draggingIndex !== null && dropBeforeIndex !== null && dropBeforeIndex === index
+              return (
+                <Fragment key={task.id}>
+                  {showInsert ? <div className={styles.taskInsertLine} aria-hidden /> : null}
+                  <div
+                    className={`${styles.taskRow} ${task.done ? styles.taskRowDone : ''} ${
+                      draggingIndex === index ? styles.taskRowDragging : ''
+                    }`}
+                    onDragOverCapture={handleTaskRowDragOver(index)}
+                    onDrop={e => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleTaskDrop(e)
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className={styles.taskHandle}
+                      draggable={!orderSaving}
+                      onDragStart={handleTaskDragStart(index)}
+                      onDragEnd={handleTaskDragEnd}
+                      aria-label="Drag to reorder"
+                      title="Drag ≡ to reorder"
+                    >
+                      ≡
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.taskCheckbox} ${task.done ? styles.taskCheckboxDone : ''}`}
+                      disabled={busyTaskId === task.id}
+                      onClick={e => {
+                        e.stopPropagation()
+                        void toggleTask(task)
+                      }}
+                      aria-label={task.done ? 'Mark not done' : 'Mark done'}
+                    >
+                      {task.done ? (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
+                          <path
+                            d="M2 5l2.5 2.5L8 3"
+                            stroke="#0f0f0f"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      ) : null}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.taskMain}
+                      disabled={busyTaskId === task.id}
+                      onClick={() => openReflection(task)}
+                    >
+                      <div className={styles.taskBody}>
+                        <span className={`${styles.taskTitle} ${task.done ? styles.taskTitleDone : ''}`}>
+                          {task.title}
+                        </span>
+                        <div className={styles.taskMeta}>
+                          {badge ? (
+                            <span className={`${styles.goalBadge} ${badge.className}`}>
+                              {badge.label.toLowerCase()}
+                            </span>
+                          ) : null}
+                          {goalName ? <span className={styles.taskGoal}>{goalName}</span> : null}
+                          {timeLabel ? <span className={styles.taskTime}>{timeLabel}</span> : null}
+                        </div>
+                      </div>
+                      <span className={styles.taskDuration}>{task.estimated_mins}m</span>
+                    </button>
+                  </div>
+                </Fragment>
+              )
+            })}
+            {draggingIndex !== null &&
+            dropBeforeIndex !== null &&
+            dropBeforeIndex === sortedTasks.length ? (
+              <div className={styles.taskInsertLine} aria-hidden />
+            ) : null}
+          </div>
+        </div>
+
+        {parkedTodayCount > 0 ? (
+          <div className={styles.parkedBanner}>
+            <span className={styles.parkedText}>
+              {parkedTodayCount} parked idea{parkedTodayCount === 1 ? '' : 's'} to review today
+            </span>
+            <button type="button" className={styles.parkedBtn} onClick={() => router.push('/gate')}>
+              review →
             </button>
-          )
-        })}
+          </div>
+        ) : null}
+
+        <button type="button" className={styles.gate} onClick={() => router.push('/gate')}>
+          + new idea? log it here first
+        </button>
       </div>
 
-      <button
-        type="button"
-        onClick={() => router.push('/gate')}
-        style={{
-          width: '100%',
-          background: 'var(--bg-card)',
-          border: '1px solid #2a2a2a',
-          borderRadius: '7px',
-          padding: '0.55rem',
-          fontSize: 'var(--fs-meta)',
-          color: 'var(--text-muted)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          cursor: 'pointer',
-          marginBottom: '1.25rem',
-        }}
-      >
-        <span
+      {reflectionTask ? (
+        <div
           style={{
-            width: '16px',
-            height: '16px',
-            borderRadius: '50%',
-            border: '1px solid #333',
-            display: 'inline-flex',
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 'var(--fs-meta)',
-            color: 'var(--text-faint)',
-            lineHeight: 1,
-            flexShrink: 0,
+            padding: 16,
+            boxSizing: 'border-box',
           }}
+          onClick={() => setReflectionTask(null)}
         >
-          +
-        </span>
-        <span>new idea? log it here first</span>
-      </button>
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 640,
+              background: '#141414',
+              border: '1px solid #2a2a2a',
+              borderRadius: 16,
+              padding: '20px 20px 32px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              maxHeight: 'min(85vh, calc(100vh - 32px))',
+              overflowY: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: '#444',
+                  textTransform: 'uppercase',
+                  letterSpacing: '.08em',
+                  marginBottom: 6,
+                }}
+              >
+                {reflectionTask.goal_detail?.title ?? 'task'}
+              </div>
+              <div
+                style={{
+                  fontSize: 20,
+                  color: '#e8e4dc',
+                  fontWeight: 400,
+                  lineHeight: 1.3,
+                  letterSpacing: '-.01em',
+                }}
+              >
+                {reflectionTask.title}
+              </div>
+              {reflectionTask.description ? (
+                <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginTop: 8 }}>
+                  {reflectionTask.description}
+                </div>
+              ) : null}
+              <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+                {reflectionTask.planned_start_time && reflectionTask.planned_end_time ? (
+                  <span style={{ fontSize: 12, color: '#333' }}>
+                    {reflectionTask.planned_start_time.slice(0, 5)} –{' '}
+                    {reflectionTask.planned_end_time.slice(0, 5)}
+                  </span>
+                ) : null}
+                <span style={{ fontSize: 12, color: '#333' }}>
+                  {reflectionTask.estimated_mins}m planned
+                </span>
+              </div>
+            </div>
+
+            <div style={{ height: 1, background: '#1e1e1e' }} />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: '#555',
+                    textTransform: 'uppercase',
+                    letterSpacing: '.06em',
+                    marginBottom: 6,
+                  }}
+                >
+                  how did it go?
+                </div>
+                <textarea
+                  value={reflNote}
+                  onChange={e => setReflNote(e.target.value)}
+                  placeholder="what happened?"
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    background: '#0f0f0f',
+                    border: '1px solid #1e1e1e',
+                    borderRadius: 8,
+                    padding: '9px 10px',
+                    fontSize: 13,
+                    color: '#e8e4dc',
+                    resize: 'none',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.5,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: '#555',
+                    textTransform: 'uppercase',
+                    letterSpacing: '.06em',
+                    marginBottom: 6,
+                  }}
+                >
+                  what went well?
+                </div>
+                <textarea
+                  value={reflWentWell}
+                  onChange={e => setReflWentWell(e.target.value)}
+                  placeholder="what worked?"
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    background: '#0f0f0f',
+                    border: '1px solid #1e1e1e',
+                    borderRadius: 8,
+                    padding: '9px 10px',
+                    fontSize: 13,
+                    color: '#e8e4dc',
+                    resize: 'none',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.5,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: '#555',
+                    textTransform: 'uppercase',
+                    letterSpacing: '.06em',
+                    marginBottom: 6,
+                  }}
+                >
+                  what would you do differently?
+                </div>
+                <textarea
+                  value={reflMissed}
+                  onChange={e => setReflMissed(e.target.value)}
+                  placeholder="what missed?"
+                  rows={2}
+                  style={{
+                    width: '100%',
+                    background: '#0f0f0f',
+                    border: '1px solid #1e1e1e',
+                    borderRadius: 8,
+                    padding: '9px 10px',
+                    fontSize: 13,
+                    color: '#e8e4dc',
+                    resize: 'none',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.5,
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: '#555',
+                    textTransform: 'uppercase',
+                    letterSpacing: '.06em',
+                  }}
+                >
+                  actual time
+                </div>
+                <input
+                  type="number"
+                  value={reflActualMins}
+                  onChange={e => setReflActualMins(e.target.value)}
+                  placeholder={String(reflectionTask.estimated_mins)}
+                  min={1}
+                  max={480}
+                  style={{
+                    width: 72,
+                    background: '#0f0f0f',
+                    border: '1px solid #1e1e1e',
+                    borderRadius: 8,
+                    padding: '7px 10px',
+                    fontSize: 13,
+                    color: '#e8e4dc',
+                    outline: 'none',
+                    textAlign: 'center',
+                  }}
+                />
+                <span style={{ fontSize: 13, color: '#444' }}>mins</span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 8,
+                paddingTop: 8,
+                borderTop: '1px solid #1e1e1e',
+                marginTop: 4,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setReflectionTask(null)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #2a2a2a',
+                  borderRadius: 24,
+                  padding: '10px 24px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#888',
+                  cursor: 'pointer',
+                }}
+              >
+                cancel
+              </button>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => void saveReflectionOnly()}
+                  disabled={reflSaving}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #2a2a2a',
+                    borderRadius: 24,
+                    padding: '10px 24px',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: '#888',
+                    cursor: reflSaving ? 'default' : 'pointer',
+                    opacity: reflSaving ? 0.5 : 1,
+                  }}
+                >
+                  save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void markDoneWithReflection()}
+                  disabled={reflSaving}
+                  style={{
+                    background: reflectionTask.done ? '#1a2a1a' : '#e8e4dc',
+                    color: reflectionTask.done ? '#5DCAA5' : '#0f0f0f',
+                    border: reflectionTask.done ? '1px solid #2a3d2a' : '1px solid transparent',
+                    borderRadius: 24,
+                    padding: '10px 24px',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: reflSaving ? 'default' : 'pointer',
+                    opacity: reflSaving ? 0.5 : 1,
+                  }}
+                >
+                  {reflSaving ? 'saving...' : reflectionTask.done ? 'update' : 'mark done'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </Shell>
   )
 }

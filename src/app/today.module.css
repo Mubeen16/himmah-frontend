@@ -1,0 +1,434 @@
+.page {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0;
+}
+
+.hero {
+  margin-bottom: 0;
+}
+
+.heroDateWrap {
+  position: relative;
+  margin-bottom: 0;
+  align-self: flex-start;
+}
+
+.heroDateTrigger {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  padding: 4px 14px 2px 0;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.heroDateTrigger:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: #333;
+  box-shadow: 0 0 0 1px rgba(93, 202, 165, 0.15);
+}
+
+.heroDateText {
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 400;
+  color: #8a8680;
+  letter-spacing: 0.03em;
+}
+
+.heroDateSep {
+  font-size: 12px;
+  color: #5a5652;
+  font-weight: 400;
+}
+
+.heroDatePopover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 50;
+  min-width: min(320px, 92vw);
+  padding: 14px 16px;
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+.heroDateNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.heroDateNavBtn {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #2a2a2a;
+  background: #181818;
+  color: #c9c5bc;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.heroDateNavBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: #3a3a3a;
+  color: #f2efe8;
+}
+
+.heroDatePickRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.heroDatePickLabel {
+  font-size: 11px;
+  color: #9a9690;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.heroDateInput {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #2a2a2a;
+  background: #0f0f0f;
+  color: #ece8e0;
+  font-size: 13px;
+  font-family: inherit;
+  color-scheme: dark;
+}
+
+.heroDateHint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #7a7670;
+  line-height: 1.45;
+}
+
+.heroGreeting {
+  font-size: 24px;
+  color: #f2efe8;
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.heroGreetingName {
+  font-weight: 500;
+}
+
+.contextRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0;
+  max-width: 100%;
+}
+
+.journey {
+  flex: none;
+  width: 63%;
+  min-width: 0;
+  padding: 14px 16px;
+  background: #141414;
+  border: 1px solid #1e1e1e;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.journeyBgText { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-size: 42px; font-weight: 700; color: #5c3d12; letter-spacing: -.03em; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 12px; }
+.journeyTop { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1; }
+.journeyLabel { font-size: 10px; color: #d4a23a; text-transform: uppercase; letter-spacing: .06em; }
+.journeyDate { font-size: 10px; color: #e0b04d; }
+.journeyBottom { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1; }
+.journeyWeek { font-size: 16px; font-weight: 500; color: #e8e4dc; line-height: 1; }
+.journeyWeekSub { font-size: 11px; font-weight: 400; color: #c9942e; }
+.journeyBarWrap { width: 80px; height: 2px; background: #5c3d12; border-radius: 1px; overflow: hidden; }
+.journeyBarFill { height: 100%; border-radius: 1px; background: #EF9F27; }
+
+.checkin {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  background: #141414;
+  border: 1px solid #1e1e1e;
+  border-radius: 10px;
+  width: 35%;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.checkinLabel { font-size: 10px; color: #9a9690; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+.checkinRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.checkinName { font-size: 11px; color: #b0aca4; width: 40px; }
+.checkinDots {
+  display: flex;
+  gap: 3px;
+  max-width: 100%;
+}
+
+.checkinDot {
+  width: 7px;
+  height: 7px;
+  min-width: 0;
+  border-radius: 50%;
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  cursor: pointer;
+  padding: 0;
+}
+.checkinDot.checkinDotOn {
+  background: #5dcaa5;
+  border-color: #2a8f70;
+}
+
+.intention {
+  font-size: 13px;
+  color: #b8b4ac;
+  font-style: italic;
+  line-height: 1.5;
+  padding: 0 2px 0 14px;
+  border-left: 2px solid #5dcaa5;
+  margin-bottom: 0;
+}
+
+.tasksHeader { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 6px; }
+.tasksTitle { font-size: 11px; color: #9a9690; text-transform: uppercase; letter-spacing: .1em; }
+.tasksStats { display: flex; align-items: baseline; gap: 5px; }
+.tasksCount { font-size: 28px; font-weight: 500; color: #f2efe8; line-height: 1; letter-spacing: -.02em; }
+.tasksTotal { font-size: 14px; color: #a09b94; }
+.tasksTime { font-size: 12px; color: #9e9a93; margin-left: 2px; }
+
+.progressBar { height: 3px; background: #252525; border-radius: 2px; margin-bottom: 20px; overflow: hidden; }
+.progressFill { height: 100%; border-radius: 2px; background: #5DCAA5; }
+
+.tasks {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  border-top: 1px solid #1e1e1e;
+}
+.taskInsertLine { height: 2px; background: #3b82f6; border-radius: 1px; margin: 0; flex-shrink: 0; }
+
+.taskRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 14px 4px;
+  border-bottom: 1px solid #1e1e1e;
+  width: 100%;
+}
+.taskRowDone { opacity: .22; }
+.taskRowDragging { opacity: .45; }
+
+.taskHandle {
+  flex-shrink: 0;
+  align-self: center;
+  width: 28px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: #6e6a63;
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: -0.12em;
+  cursor: grab;
+  opacity: .22;
+  transition: opacity 140ms ease;
+}
+.taskHandle:hover { opacity: .85; }
+.taskHandle:active { cursor: grabbing; }
+
+.taskCheckbox {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  border-radius: 50%;
+  border: 1.5px solid #4a4a4a;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.taskCheckboxDone { background: #5DCAA5; border-color: #5DCAA5; }
+
+.taskMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.taskBody { flex: 1; min-width: 0; }
+.taskTitle { font-size: 17px; color: #ece8e0; font-weight: 400; line-height: 1.3; letter-spacing: -.01em; display: block; }
+.taskTitleDone { text-decoration: line-through; color: #4a4844; opacity: .85; }
+.taskMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin-top: 6px; }
+.goalBadge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: none;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid;
+  flex-shrink: 0;
+}
+.goalBadgePrimary {
+  color: #d4a23a;
+  border-color: #a67c12;
+  background: rgba(239, 159, 39, 0.1);
+}
+.goalBadgeProfessional {
+  color: #5dcaa5;
+  border-color: #0f6e56;
+  background: #1a2a1a;
+}
+.goalBadgeSpiritual {
+  color: #7f77dd;
+  border-color: #534ab7;
+  background: #1a1a2a;
+}
+.goalBadgeFamily {
+  color: #ef9f27;
+  border-color: #854f0b;
+  background: #2a1a1a;
+}
+.goalBadgeHealth {
+  color: #d85a30;
+  border-color: #993c1d;
+  background: #2a1a1a;
+}
+.taskGoal { font-size: 13px; color: #c9c5bc; font-weight: 500; }
+.taskTime { font-size: 12px; color: #a09b94; }
+.taskDuration { font-size: 13px; color: #9e9a93; font-weight: 500; flex-shrink: 0; margin-top: 2px; }
+
+.gate {
+  width: 100%;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+  background: transparent;
+  border: 1px dashed #4a4a4a;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 13px;
+  color: #a09b94;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.gate:hover {
+  border-color: #5c5c5c;
+  color: #c4bfb6;
+}
+
+.noPlanCard {
+  background: #141414;
+  border: 1px solid #1e1e1e;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0;
+}
+
+.noPlanTitle {
+  font-size: 14px;
+  color: #e8e4dc;
+  margin-bottom: 0.4rem;
+  font-weight: 500;
+}
+
+.noPlanText {
+  font-size: 13px;
+  color: #b0aca4;
+  line-height: 1.5;
+}
+
+.noPlanBtn {
+  width: 100%;
+  max-width: 640px;
+  border: none;
+  border-radius: 10px;
+  background: #e8e4dc;
+  color: #0f0f0f;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.fieldInput {
+  width: 100%;
+  background: #0f0f0f;
+  border: 1px solid #1e1e1e;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #e8e4dc;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.fieldInput::placeholder {
+  color: #2a2a2a;
+}
+
+.fieldInput:focus {
+  border-color: #2a2a2a;
+}
+
+.parkedBanner { background: #181818; border: 1px solid #EF9F27; border-radius: 8px; padding: .65rem .9rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+.parkedText { font-size: 13px; color: #EF9F27; }
+.parkedBtn { font-size: 11px; color: #EF9F27; background: transparent; border: none; cursor: pointer; }

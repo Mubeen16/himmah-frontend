@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
+import HimmahBrand from '@/components/HimmahBrand'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -67,17 +68,9 @@ export default function RegisterPage() {
           padding: '1.5rem',
         }}
       >
-        <h1
-          style={{
-            fontFamily: 'var(--font-arabic), -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
-            fontSize: '30px',
-            lineHeight: 1,
-            color: 'var(--teal)',
-            marginBottom: '.5rem',
-          }}
-        >
-          هِمَّة
-        </h1>
+        <div style={{ marginBottom: '.75rem', color: 'var(--text-primary)' }}>
+          <HimmahBrand />
+        </div>
         <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>
           create your account
         </p>

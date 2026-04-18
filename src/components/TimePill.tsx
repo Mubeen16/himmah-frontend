@@ -11,13 +11,13 @@ function formatTime(d: Date): string {
 }
 
 export default function TimePill() {
-  const [timeText, setTimeText] = useState<string>(() => formatTime(new Date()))
+  // Avoid SSR/client clock mismatch (server TZ ≠ browser): render only after mount.
+  const [timeText, setTimeText] = useState('')
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setTimeText(formatTime(new Date()))
-    }, 1000 * 30)
-
+    const tick = () => setTimeText(formatTime(new Date()))
+    tick()
+    const timer = window.setInterval(tick, 1000 * 30)
     return () => window.clearInterval(timer)
   }, [])
 
@@ -25,7 +25,7 @@ export default function TimePill() {
     <span
       style={{
         fontSize: 'var(--fs-meta)',
-        color: 'var(--text-muted)',
+        color: 'var(--text-secondary)',
         background: 'var(--bg-card)',
         border: '1px solid var(--border)',
         borderRadius: '20px',
@@ -33,7 +33,7 @@ export default function TimePill() {
         fontWeight: 400,
       }}
     >
-      {timeText}
+      {timeText || '–:––'}
     </span>
   )
 }

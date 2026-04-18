@@ -9,8 +9,8 @@ const notoArabic = Noto_Sans_Arabic({
 })
 
 export const metadata: Metadata = {
-  title: 'هِمَّة',
-  description: 'your personal operating system',
+  title: 'Himmah',
+  description: 'your personal operating system — commitment engine',
 }
 
 export default function RootLayout({
