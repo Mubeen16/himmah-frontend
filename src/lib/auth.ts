@@ -10,10 +10,16 @@ export async function login(username: string, password: string) {
   return res.data
 }
 
-export function logout() {
+/** Clears JWT and auth cookie only (no navigation). */
+export function clearAuth() {
   localStorage.removeItem('access_token')
   localStorage.removeItem('refresh_token')
   document.cookie = 'access_token=; path=/; max-age=0'
+}
+
+/** Full sign-out including redirect (e.g. 401 handler). */
+export function logout() {
+  clearAuth()
   window.location.href = '/login'
 }
 

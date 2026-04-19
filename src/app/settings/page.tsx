@@ -1,10 +1,12 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Shell from '@/components/Shell'
-import { logout } from '@/lib/auth'
+import { clearAuth } from '@/lib/auth'
 
 export default function SettingsPage() {
+  const router = useRouter()
   const [username] = useState(() =>
     typeof window !== 'undefined' ? (localStorage.getItem('username') ?? 'member') : 'member',
   )
@@ -12,7 +14,8 @@ export default function SettingsPage() {
   function handleSignOut() {
     const ok = window.confirm('sign out of Himmah?')
     if (!ok) return
-    logout()
+    clearAuth()
+    router.replace('/login')
   }
 
   return (

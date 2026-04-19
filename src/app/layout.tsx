@@ -8,12 +8,28 @@ const notoArabic = Noto_Sans_Arabic({
   variable: '--font-arabic',
 })
 
+/** Resolves relative metadata URLs (icons, manifest) on Vercel and locally. */
+function metadataBaseUrl(): URL {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL
+  if (explicit) {
+    return new URL(explicit.endsWith('/') ? explicit.slice(0, -1) : explicit)
+  }
+  if (process.env.VERCEL_URL) {
+    return new URL(`https://${process.env.VERCEL_URL}`)
+  }
+  return new URL('http://localhost:3000')
+}
+
 export const metadata: Metadata = {
+  metadataBase: metadataBaseUrl(),
   title: 'Himmah',
   description: 'A personal OS for people serious about who they are becoming.',
   manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.png',
+    icon: [
+      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+    ],
+    shortcut: '/favicon.png',
     apple: '/apple-touch-icon.png',
   },
   themeColor: '#0f0f0f',
