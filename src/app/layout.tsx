@@ -10,7 +10,18 @@ const notoArabic = Noto_Sans_Arabic({
 
 export const metadata: Metadata = {
   title: 'Himmah',
-  description: 'your personal operating system — commitment engine',
+  description: 'A personal OS for people serious about who they are becoming.',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/favicon.png',
+    apple: '/apple-touch-icon.png',
+  },
+  themeColor: '#0f0f0f',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Himmah',
+  },
 }
 
 export default function RootLayout({

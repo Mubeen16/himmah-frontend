@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Himmah">
+  <rect width="512" height="512" rx="112" fill="#0f0f0f"/>
+  <circle cx="256" cy="132" r="36" fill="#5DCAA5"/>
+  <path
+    fill="#e8e4dc"
+    d="M152 200h56v240h-56V200zm248 0h56v240h-56V200zM208 328h96v56H208v-56z"
+  />
+</svg>
