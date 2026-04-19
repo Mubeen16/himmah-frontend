@@ -5,12 +5,6 @@ import Shell from '@/components/Shell'
 import api from '@/lib/api'
 import styles from './review.module.css'
 
-interface Goal {
-  id: number
-  title: string
-  is_primary?: boolean
-}
-
 interface Task {
   id: number
   title: string
@@ -78,7 +72,10 @@ export default function ReviewPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [taskExpanded, setTaskExpanded] = useState(false)
-  const name = 'Mubeen'
+  const name =
+    typeof window !== 'undefined'
+      ? (localStorage.getItem('username') ?? 'there')
+      : 'there'
 
   useEffect(() => {
     void (async () => {

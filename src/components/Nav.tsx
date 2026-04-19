@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useSyncExternalStore } from 'react'
 import HimmahBrand from './HimmahBrand'
 import {
+  NavIconGate,
   NavIconGoals,
   NavIconPlan,
   NavIconReview,
@@ -32,6 +33,7 @@ const links = [
   { href: '/', label: 'today', Icon: NavIconToday },
   { href: '/plan', label: 'plan', Icon: NavIconPlan },
   { href: '/review', label: 'review', Icon: NavIconReview },
+  { href: '/gate', label: 'gate', Icon: NavIconGate },
   { href: '/goals', label: 'goals', Icon: NavIconGoals },
   { href: '/settings', label: 'settings', Icon: NavIconSettings },
 ] as const
@@ -101,7 +103,6 @@ export default function Nav() {
       <aside
         className={['hm-side-nav', railOpen ? 'hm-side-nav--expanded' : ''].filter(Boolean).join(' ')}
         aria-label="Primary"
-        aria-expanded={railOpen}
       >
         <div className="hm-side-rail-brand">
           <div className="hm-side-rail-brandCollapsed" inert={railOpen || undefined}>
@@ -110,6 +111,7 @@ export default function Nav() {
               className="hm-side-rail-pinBtn hm-side-rail-pinBtn--collapsed"
               onClick={() => toggleRailOpen()}
               aria-label="Open sidebar"
+              aria-expanded={railOpen}
             >
               <SideRailLayoutIcon />
             </button>
@@ -121,7 +123,7 @@ export default function Nav() {
               <button
                 type="button"
                 className="hm-side-rail-pinBtn hm-side-rail-pinBtn--collapsed"
-                aria-pressed={railOpen}
+                aria-expanded={railOpen}
                 aria-label="Close sidebar"
                 onClick={e => {
                   e.stopPropagation()

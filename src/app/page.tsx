@@ -174,7 +174,9 @@ export default function TodayPage() {
       hour12: true,
     }),
   )
-  const [name, setName] = useState('Mubeen')
+  const [name] = useState(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('username') ?? 'there') : 'there',
+  )
   const [busyTaskId, setBusyTaskId] = useState<number | null>(null)
   const [parkedTodayCount, setParkedTodayCount] = useState(0)
   const [dayIntention, setDayIntention] = useState<DayIntention | null>(null)
@@ -218,11 +220,6 @@ export default function TodayPage() {
 
     setLoading(false)
     return goalData
-  }, [])
-
-  useEffect(() => {
-    const username = localStorage.getItem('username')
-    if (username) setName(username)
   }, [])
 
   useEffect(() => {
@@ -563,10 +560,25 @@ export default function TodayPage() {
             <div className={styles.noPlanTitle}>
               {isViewingToday ? 'no plan for today' : 'no plan for this day'}
             </div>
-            <p className={styles.noPlanText}>a day without a plan is a day you hand to distraction. do it now.</p>
+            <p className={styles.noPlanLead}>himmah works like this:</p>
+            <ol className={styles.guidedLoopList}>
+              <li>
+                <button type="button" className={styles.guidedLoopLink} onClick={() => router.push('/goals')}>
+                  set your goals →
+                </button>
+              </li>
+              <li>
+                <button type="button" className={styles.guidedLoopLink} onClick={() => router.push('/plan')}>
+                  plan your day the night before →
+                </button>
+              </li>
+              <li>
+                <span className={styles.guidedLoopMuted}>execute here each morning</span>
+              </li>
+            </ol>
           </div>
-          <button type="button" className={styles.noPlanBtn} onClick={() => router.push('/plan')}>
-            plan today now
+          <button type="button" className={styles.noPlanBtn} onClick={() => router.push('/goals')}>
+            start with your goals →
           </button>
         </div>
       </Shell>
@@ -673,6 +685,17 @@ export default function TodayPage() {
           <div className={styles.progressBar}>
             <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
           </div>
+          {sortedTasks.length === 0 ? (
+            <div className={styles.executeEmpty}>
+              <div className={styles.executeEmptyTitle}>nothing to execute yet</div>
+              <p className={styles.executeEmptyText}>
+                add tasks on plan — they show up here each morning. set your intention on plan too.
+              </p>
+              <button type="button" className={styles.executeEmptyBtn} onClick={() => router.push('/plan')}>
+                open plan →
+              </button>
+            </div>
+          ) : null}
           <div
             className={styles.tasks}
             onDragOver={handleTasksAreaDragOver}

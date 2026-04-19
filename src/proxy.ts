@@ -3,15 +3,23 @@ import type { NextRequest } from 'next/server'
 
 export function proxy(request: NextRequest) {
   const token = request.cookies.get('access_token')?.value
-  const isPublicPage =
-    request.nextUrl.pathname === '/login' ||
-    request.nextUrl.pathname === '/register'
+  const path = request.nextUrl.pathname.replace(/\/$/, '') || '/'
 
-  if (!token && !isPublicPage) {
+  const allowsAnonymous =
+    path === '/login' ||
+    path === '/register' ||
+    path === '/forgot-password' ||
+    path === '/reset-password'
+
+  if (!token && !allowsAnonymous) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (token && isPublicPage) {
+  // Signed-in users do not need auth entry pages; still allow /reset-password (e.g. email link while a session exists).
+  const redirectAuthedToHome =
+    path === '/login' || path === '/register' || path === '/forgot-password'
+
+  if (token && redirectAuthedToHome) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

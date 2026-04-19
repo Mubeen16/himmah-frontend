@@ -43,6 +43,22 @@ export function NavIconReview(props: IconProps) {
   )
 }
 
+/** Gate — new idea, important but not now (lightbulb + later clock) */
+export function NavIconGate(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden {...props}>
+      <path
+        d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"
+        {...S}
+      />
+      <path d="M9 18h6" {...S} />
+      <path d="M10 22h4" {...S} />
+      <circle cx="18.5" cy="6.5" r="2.75" {...S} />
+      <path d="M18.5 8.25V6.5L20 5" {...S} />
+    </svg>
+  )
+}
+
 /** Goals — target */
 export function NavIconGoals(props: IconProps) {
   return (

@@ -23,7 +23,15 @@
   --fs-title: 17px;
   --fs-hero: 22px;
   /* Fixed shell header + safe area — main column & desktop sidebar top align to this */
-  --hm-fixed-header-offset: calc(4.2rem + env(safe-area-inset-top, 0px));
+  /* ~logo + tagline + border + header padding; slightly generous so first line never tucks under bar */
+  --hm-fixed-header-offset: calc(5rem + env(safe-area-inset-top, 0px));
+  /* 4px-based rhythm — use for padding/gap/margin across shell + loop */
+  --hm-space-1: 0.25rem;
+  --hm-space-2: 0.5rem;
+  --hm-space-3: 0.75rem;
+  --hm-space-4: 1rem;
+  --hm-space-5: 1.25rem;
+  --hm-space-6: 1.5rem;
 }
 
 * {
@@ -57,6 +65,25 @@ a {
   text-decoration: none;
 }
 
+@keyframes hm-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes hm-loop-fadein {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Flex wrapper: desktop sidebar + main push together (no overlap on expand) */
 .hm-app {
   display: flex;
@@ -70,8 +97,8 @@ a {
   max-width: 640px;
   margin: 0 auto;
   padding-top: 0;
-  padding-bottom: clamp(1.25rem, 2.5vw, 2rem);
-  padding-inline: clamp(0.75rem, 1.85vw, 1.4rem);
+  padding-bottom: clamp(var(--hm-space-5), 2.5vw, var(--hm-space-6));
+  padding-inline: clamp(var(--hm-space-3), 1.85vw, var(--hm-space-5));
   min-height: 100vh;
   flex: 1;
   min-width: 0;
@@ -100,10 +127,10 @@ a {
   justify-content: center;
   margin: 0;
   background: var(--bg);
-  padding-top: calc(env(safe-area-inset-top, 0px) + 0.8rem);
-  padding-bottom: 0.85rem;
-  padding-left: clamp(0.75rem, 1.85vw, 1.4rem);
-  padding-right: clamp(0.75rem, 1.85vw, 1.4rem);
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--hm-space-3));
+  padding-bottom: var(--hm-space-3);
+  padding-left: clamp(var(--hm-space-3), 1.85vw, var(--hm-space-5));
+  padding-right: clamp(var(--hm-space-3), 1.85vw, var(--hm-space-5));
   transition: left 180ms ease;
 }
 
@@ -123,6 +150,7 @@ a {
 /* Match fixed header so page content starts below it, not under it */
 .hm-shell-main {
   padding-top: var(--hm-fixed-header-offset);
+  padding-bottom: var(--hm-space-4);
 }
 
 .hm-shell-brandBlock {
@@ -254,7 +282,7 @@ a {
     max-width: 760px;
     margin-left: auto;
     margin-right: auto;
-    padding-bottom: clamp(1.25rem, 2.5vw, 2rem);
+    padding-bottom: clamp(var(--hm-space-5), 2.5vw, var(--hm-space-6));
   }
 
   .hm-shell-headerInner {
@@ -272,6 +300,81 @@ a {
 
   .hm-app:has(.hm-side-nav--expanded) .hm-shell-header {
     left: 192px;
+  }
+
+  /* Loop column: gutters rail ↔ loop ↔ main; sticky below fixed shell header */
+  .hm-loop-slot {
+    /* Collapsed loop card 52px + ~16px rhythm; overrides Tailwind w-[232px] on the slot */
+    width: 68px !important;
+    max-width: 68px;
+    margin-left: var(--hm-space-3);
+    /* Tight gap before main; desktop may tighten further in :has(.hm-loop-slot) block */
+    margin-right: var(--hm-space-1);
+    padding-top: var(--hm-fixed-header-offset);
+    padding-bottom: var(--hm-space-4);
+    padding-right: 0;
+    padding-left: 0;
+    align-self: flex-start;
+    position: sticky;
+    top: var(--hm-fixed-header-offset);
+    max-height: calc(100vh - var(--hm-fixed-header-offset));
+    overflow: visible;
+    box-sizing: border-box;
+  }
+
+  /* Loop column sits between rail and shell; keep fixed header aligned with main column */
+  .hm-app:has(.hm-loop-slot) .hm-shell-header {
+    left: calc(72px + var(--hm-space-3) + 68px + var(--hm-space-1));
+  }
+
+  .hm-app:has(.hm-side-nav--expanded):has(.hm-loop-slot) .hm-shell-header {
+    left: calc(192px + var(--hm-space-3) + 68px + var(--hm-space-1));
+  }
+
+  /*
+   * Loop + main: kill the “floating island” gap (shell was margin:auto centered in the flex remainder).
+   * Flush main after LoopCard, wider cap; header follows same horizontal line as main text.
+   */
+  .hm-app:has(.hm-loop-slot) .hm-shell {
+    margin-left: 0;
+    margin-right: 0;
+    max-width: min(1280px, 100%);
+    flex: 1 1 0%;
+    min-width: 0;
+    /* Left: modest gutter; right: ~rail-scale breathing room (similar visual weight to left nav strip) */
+    padding-left: clamp(var(--hm-space-2), 1.4vw, var(--hm-space-5));
+    padding-right: clamp(4.5rem, 8vw + 3rem, 9.5rem);
+  }
+
+  .hm-app:has(.hm-loop-slot):has(.hm-side-nav--expanded) .hm-shell {
+    padding-right: clamp(5rem, 9vw + 3.5rem, 11rem);
+  }
+
+  .hm-app:has(.hm-loop-slot) .hm-shell.hm-shell-wide {
+    margin-left: 0;
+    margin-right: 0;
+    max-width: min(1680px, 100%);
+  }
+
+  .hm-app:has(.hm-loop-slot) .hm-shell-header {
+    justify-content: flex-start;
+    padding-left: clamp(var(--hm-space-2), 1.4vw, var(--hm-space-5));
+    padding-right: clamp(4.5rem, 8vw + 3rem, 9.5rem);
+  }
+
+  .hm-app:has(.hm-loop-slot):has(.hm-side-nav--expanded) .hm-shell-header {
+    padding-right: clamp(5rem, 9vw + 3.5rem, 11rem);
+  }
+
+  .hm-app:has(.hm-loop-slot) .hm-shell-headerInner {
+    max-width: min(1280px, 100%);
+    width: 100%;
+    margin-inline: 0;
+    justify-content: flex-start;
+  }
+
+  .hm-app:has(.hm-loop-slot) .hm-shell.hm-shell-wide .hm-shell-headerInner {
+    max-width: min(1680px, 100%);
   }
 
   .hm-bottom-nav {

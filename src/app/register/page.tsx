@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import axios from 'axios'
+import api from '@/lib/api'
 import HimmahBrand from '@/components/HimmahBrand'
+import PasswordRevealField from '@/components/PasswordRevealField'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -30,18 +31,17 @@ export default function RegisterPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await axios.post('http://localhost:8000/api/auth/register/', { username, email, password })
+      const res = await api.post('/auth/register/', { username, email, password })
       localStorage.setItem('access_token', res.data.access)
       localStorage.setItem('refresh_token', res.data.refresh)
       localStorage.setItem('username', res.data.username)
       document.cookie = `access_token=${res.data.access}; path=/; max-age=86400`
       router.push('/goals?onboarding=true')
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.error ?? 'registration failed')
-      } else {
-        setError('registration failed')
-      }
+    } catch (err: unknown) {
+      const data = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { error?: string } } }).response?.data
+        : undefined
+      setError(typeof data?.error === 'string' ? data.error : 'registration failed')
     } finally {
       setLoading(false)
     }
@@ -113,13 +113,11 @@ export default function RegisterPage() {
         </div>
 
         <div style={{ marginBottom: '.65rem' }}>
-          <input
-            type="password"
+          <PasswordRevealField
             value={password}
             onChange={e => setPassword(e.target.value)}
             placeholder="password"
-            style={{
-              width: '100%',
+            inputStyle={{
               borderRadius: '10px',
               border: '1px solid var(--border)',
               background: 'var(--bg)',
@@ -132,14 +130,12 @@ export default function RegisterPage() {
         </div>
 
         <div style={{ marginBottom: '.9rem' }}>
-          <input
-            type="password"
+          <PasswordRevealField
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && void handleSubmit()}
             placeholder="confirm password"
-            style={{
-              width: '100%',
+            inputStyle={{
               borderRadius: '10px',
               border: '1px solid var(--border)',
               background: 'var(--bg)',

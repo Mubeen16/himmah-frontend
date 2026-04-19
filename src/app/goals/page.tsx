@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
@@ -101,7 +101,9 @@ function colorsForCategory(category: string) {
 function GoalsPageContent() {
   const searchParams = useSearchParams()
   const isOnboarding = searchParams.get('onboarding') === 'true'
-  const [displayName, setDisplayName] = useState('Mubeen')
+  const [displayName] = useState(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('username') ?? 'there') : 'there',
+  )
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
@@ -157,24 +159,10 @@ function GoalsPageContent() {
   }, [perWeekHours, totalHours])
 
   useEffect(() => {
-    const username = typeof window !== 'undefined' ? localStorage.getItem('username') : null
-    if (username) setDisplayName(username)
-  }, [])
-
-  useEffect(() => {
     void loadGoals()
   }, [])
 
   const modalOpen = formOpen || editGoalId !== null
-
-  useEffect(() => {
-    if (!modalOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeModal()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [modalOpen])
 
   async function loadGoals() {
     setLoading(true)
@@ -186,7 +174,7 @@ function GoalsPageContent() {
     }
   }
 
-  function resetFormFields() {
+  const resetFormFields = useCallback(() => {
     setFormTitle('')
     setFormCategory('professional')
     setFormEndDate('')
@@ -196,13 +184,22 @@ function GoalsPageContent() {
     setHoursPerSession(2)
     setHoursPerWeek(10)
     setHoursPerMonth(40)
-  }
+  }, [])
 
-  function closeModal() {
+  const closeModal = useCallback(() => {
     setFormOpen(false)
     setEditGoalId(null)
     resetFormFields()
-  }
+  }, [resetFormFields])
+
+  useEffect(() => {
+    if (!modalOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [modalOpen, closeModal])
 
   function openForm() {
     resetFormFields()
@@ -429,9 +426,25 @@ function GoalsPageContent() {
           <div className={styles.heroSub}>everything you&apos;re building toward</div>
         </div>
 
-        <button type="button" onClick={openForm} className={styles.addGoalBtn}>
-          + add a new goal
-        </button>
+        {!loading && goals.length === 0 ? (
+          <div className={styles.goalsEmptyGuided}>
+            <div className={styles.goalsEmptyTitle}>no goals yet</div>
+            <p className={styles.goalsEmptyBody}>
+              himmah is built around one primary goal. everything else — your tasks, your day, your reviews — flows
+              from that one thing.
+            </p>
+            <p className={styles.goalsEmptyQuestion}>what are you building toward?</p>
+            <button type="button" onClick={openForm} className={styles.goalsEmptyCta}>
+              + add your first goal
+            </button>
+          </div>
+        ) : null}
+
+        {!loading && goals.length > 0 ? (
+          <button type="button" onClick={openForm} className={styles.addGoalBtn}>
+            + add a new goal
+          </button>
+        ) : null}
 
         {loading ? (
           <p className={styles.loadingText}>loading...</p>

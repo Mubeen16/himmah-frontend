@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
 import { formatLongDate } from '@/lib/formatDate'
@@ -246,6 +247,7 @@ const DAY_GRID_PAD_Y = 8
 const EMPTY_DAY_VISIBLE_HOURS = 12
 
 export default function PlanPage() {
+  const router = useRouter()
   const [date, setDate] = useState<string | null>(null)
   const [planId, setPlanId] = useState<Id>(null)
   const [goals, setGoals] = useState<Goal[]>([])
@@ -1318,7 +1320,8 @@ export default function PlanPage() {
         </div>
       ) : null}
 
-      <div className={styles.planPageColumn}>
+      <div className={styles.planContentWrap}>
+        <div className={styles.planPageColumn}>
         <div className={styles.weekBar}>
           <button
             type="button"
@@ -1418,6 +1421,42 @@ export default function PlanPage() {
             </span>
           </button>
         </div>
+
+        {tasks.length === 0 ? (
+          <div className={styles.planEmptyGuided}>
+            <div className={styles.planEmptyTitle}>
+              {date === todayIso() ? 'nothing planned for today' : 'nothing planned for this day'}
+            </div>
+            {goals.length === 0 ? (
+              <>
+                <p className={styles.planEmptyBody}>set your goals first — planning needs something to schedule toward.</p>
+                <button type="button" className={styles.planEmptyCta} onClick={() => router.push('/goals')}>
+                  go to goals →
+                </button>
+              </>
+            ) : (
+              <>
+                <p className={styles.planEmptyBody}>
+                  add your first task for this day
+                  <br />
+                  and set your intention for the day
+                </p>
+                <div className={styles.planEmptyActions}>
+                  <button
+                    type="button"
+                    className={styles.planEmptyCta}
+                    onClick={() => openCreateSheet()}
+                  >
+                    + add a task
+                  </button>
+                  <button type="button" className={styles.planEmptySecondary} onClick={() => openIntentionModal()}>
+                    set intention
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
 
         <div
           style={{
@@ -1838,6 +1877,7 @@ export default function PlanPage() {
             </div>
           </div>
         </main>
+      </div>
       </div>
     </Shell>
   )

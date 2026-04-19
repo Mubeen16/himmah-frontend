@@ -1,8 +1,8 @@
 /* Match Today + Review: same column width and rhythm as .page in today/review.module.css */
 .page {
   width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -84,6 +84,54 @@
   font-size: 13px;
   color: #5dcaa5;
   line-height: 1.45;
+}
+
+.goalsEmptyGuided {
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 1.25rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.goalsEmptyTitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: #f2efe8;
+}
+
+.goalsEmptyBody {
+  font-size: 13px;
+  color: #9e9a93;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.goalsEmptyQuestion {
+  font-size: 14px;
+  color: #c4bfb6;
+  margin: 0.25rem 0 0;
+  font-weight: 500;
+}
+
+.goalsEmptyCta {
+  margin-top: 0.35rem;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 10px;
+  background: #e8e4dc;
+  color: #0f0f0f;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.goalsEmptyCta:hover {
+  filter: brightness(1.05);
 }
 
 .goalCard {

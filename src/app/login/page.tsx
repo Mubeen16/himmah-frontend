@@ -1,9 +1,11 @@
 'use client'
 
 import axios from 'axios'
+import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import HimmahBrand from '@/components/HimmahBrand'
+import PasswordRevealField from '@/components/PasswordRevealField'
 import { login } from '@/lib/auth'
 
 export default function LoginPage() {
@@ -97,14 +99,12 @@ export default function LoginPage() {
           <label style={{ display: 'block', fontSize: '10px', color: 'var(--text-faint)', marginBottom: '.35rem' }}>
             password
           </label>
-          <input
-            type="password"
+          <PasswordRevealField
             value={password}
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
             placeholder="your password"
-            style={{
-              width: '100%',
+            inputStyle={{
               borderRadius: '10px',
               border: '1px solid var(--border)',
               background: 'var(--bg-card)',
@@ -151,6 +151,23 @@ export default function LoginPage() {
         >
           {loading ? 'signing in...' : 'sign in'}
         </button>
+        <Link
+          href="/forgot-password"
+          style={{
+            marginTop: '.5rem',
+            display: 'block',
+            width: '100%',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--text-muted)',
+            fontSize: '13px',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            textAlign: 'center',
+          }}
+        >
+          forgot password?
+        </Link>
         <button
           type="button"
           onClick={() => router.push('/register')}

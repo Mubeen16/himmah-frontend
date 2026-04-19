@@ -1,3 +1,72 @@
+.planContentWrap {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.planEmptyGuided {
+  margin: 0 16px 12px;
+  padding: 14px 16px;
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+}
+
+.planEmptyTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e8e4dc;
+  margin-bottom: 8px;
+}
+
+.planEmptyBody {
+  font-size: 13px;
+  color: #9a9a93;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+
+.planEmptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.planEmptyCta {
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid #2a5a42;
+  background: #0d1f18;
+  color: #5dcaa5;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.planEmptyCta:hover {
+  border-color: #3d7a58;
+  color: #7ae8c0;
+}
+
+.planEmptySecondary {
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: transparent;
+  color: #9a9a93;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.planEmptySecondary:hover {
+  border-color: #444;
+  color: #c8c4bc;
+}
+
 .planPageColumn {
   width: 100%;
   display: flex;

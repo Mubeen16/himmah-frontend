@@ -1,16 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Shell from '@/components/Shell'
 import { logout } from '@/lib/auth'
 
 export default function SettingsPage() {
-  const [username, setUsername] = useState('member')
-
-  useEffect(() => {
-    const stored = localStorage.getItem('username')
-    if (stored) setUsername(stored)
-  }, [])
+  const [username] = useState(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('username') ?? 'member') : 'member',
+  )
 
   function handleSignOut() {
     const ok = window.confirm('sign out of Himmah?')
