@@ -1408,18 +1408,6 @@ export default function PlanPage() {
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            className={styles.planCreateBtnCompact}
-            onClick={() => openCreateSheet()}
-            disabled={goals.length === 0}
-          >
-            <span className={styles.planCreatePlus}>+</span>
-            <span>Create</span>
-            <span className={styles.planCreateCaret} aria-hidden>
-              ▾
-            </span>
-          </button>
         </div>
 
         {tasks.length === 0 ? (
@@ -1647,6 +1635,18 @@ export default function PlanPage() {
                 flexWrap: 'wrap',
               }}
             >
+              <button
+                type="button"
+                className={styles.planCreateBtnCompact}
+                onClick={() => openCreateSheet()}
+                disabled={goals.length === 0}
+              >
+                <span className={styles.planCreatePlus}>+</span>
+                <span>Create</span>
+                <span className={styles.planCreateCaret} aria-hidden>
+                  ▾
+                </span>
+              </button>
               <button type="button" className={styles.planTodayBtn} onClick={() => setDate(todayIso())}>
                 Today
               </button>
