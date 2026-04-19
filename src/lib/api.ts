@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -24,10 +24,8 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
         try {
-          const res = await axios.post(
-            'http://127.0.0.1:8000/api/token/refresh/',
-            { refresh }
-          )
+          const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api'
+          const res = await axios.post(`${base}/token/refresh/`, { refresh })
           localStorage.setItem('access_token', res.data.access)
           original.headers.Authorization = `Bearer ${res.data.access}`
           return api(original)
