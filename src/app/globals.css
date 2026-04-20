@@ -40,6 +40,10 @@
   padding: 0;
 }
 
+html {
+  height: -webkit-fill-available;
+}
+
 html, body {
   background: var(--bg);
   color: var(--text-primary);
@@ -53,6 +57,7 @@ html, body {
 
 body {
   min-height: 100vh;
+  min-height: -webkit-fill-available;
 }
 
 input, textarea, button, select {
@@ -638,4 +643,13 @@ a {
 
 .hm-form-field {
   max-width: 480px;
+}
+
+/* Mobile keyboard: reserve space below focused fields so scroll-into-view clears the keyboard */
+@media (max-width: 768px) {
+  input:focus,
+  textarea:focus,
+  select:focus {
+    scroll-margin-bottom: 320px;
+  }
 }

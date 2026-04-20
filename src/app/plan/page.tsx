@@ -318,25 +318,65 @@ export default function PlanPage() {
   const dayTimelineModel = useMemo(() => {
     const gridStartMins = parseDayStartToMins(dayStartTime)
     const ordered = [...tasks].sort((a, b) => a.order - b.order)
-    let cumulativeMins = 0
-    const blocks = ordered.map(t => {
-      const topPx = DAY_GRID_PAD_Y + (cumulativeMins / 60) * HOUR_HEIGHT_PX
+
+    type TimedEntry = { task: PlanTask; startMins: number; endMins: number }
+    const timed: TimedEntry[] = []
+    const stacked: PlanTask[] = []
+
+    for (const t of ordered) {
+      if (!t.is_all_day && t.planned_start_time && t.planned_end_time) {
+        const s = parseTimeMinutes(normalizeTimeForInput(t.planned_start_time))
+        const e = parseTimeMinutes(normalizeTimeForInput(t.planned_end_time))
+        if (s != null && e != null && e > s) {
+          timed.push({ task: t, startMins: s, endMins: e })
+          continue
+        }
+      }
+      stacked.push(t)
+    }
+
+    const timelineBaseMins =
+      timed.length > 0 ? Math.min(gridStartMins, ...timed.map(x => x.startMins)) : gridStartMins
+
+    const timedBlocks = timed.map(({ task, startMins, endMins }) => ({
+      task,
+      topPx: DAY_GRID_PAD_Y + ((startMins - timelineBaseMins) / 60) * HOUR_HEIGHT_PX,
+      heightPx: Math.max(((endMins - startMins) / 60) * HOUR_HEIGHT_PX, 28),
+    }))
+
+    const maxTimedEndMins = timed.length > 0 ? Math.max(...timed.map(x => x.endMins)) : gridStartMins
+    let stackCursorMins = Math.max(gridStartMins, maxTimedEndMins)
+    const stackedBlocks = stacked.map(t => {
+      const topPx = DAY_GRID_PAD_Y + ((stackCursorMins - timelineBaseMins) / 60) * HOUR_HEIGHT_PX
       const heightPx = Math.max((t.estimated_mins / 60) * HOUR_HEIGHT_PX, 28)
-      cumulativeMins += t.estimated_mins
+      stackCursorMins += t.estimated_mins
       return { task: t, topPx, heightPx }
     })
-    const totalPlanMins = cumulativeMins
-    const gridEndMins =
-      totalPlanMins === 0
-        ? gridStartMins + EMPTY_DAY_VISIBLE_HOURS * 60
-        : gridStartMins + totalPlanMins + 60
-    const spanMins = Math.max(gridEndMins - gridStartMins, 60)
+
+    const blocks = [...timedBlocks, ...stackedBlocks].sort(
+      (a, b) => a.topPx - b.topPx || a.task.id - b.task.id
+    )
+
+    const totalPlanMins = tasks.reduce((s, t) => s + t.estimated_mins, 0)
+    const emptyEndMins = gridStartMins + EMPTY_DAY_VISIBLE_HOURS * 60
+    const gridEndMins = Math.max(emptyEndMins, stackCursorMins, timed.length ? maxTimedEndMins : timelineBaseMins)
+    const spanMins = Math.max(gridEndMins - timelineBaseMins, 60)
     const containerHeightPx = DAY_GRID_PAD_Y * 2 + (spanMins / 60) * HOUR_HEIGHT_PX
+
     const hourMarkers: number[] = []
-    for (let m = Math.ceil(gridStartMins / 60) * 60; m <= gridEndMins; m += 60) {
+    for (let m = Math.ceil(timelineBaseMins / 60) * 60; m <= gridEndMins; m += 60) {
       hourMarkers.push(m)
     }
-    return { gridStartMins, gridEndMins, containerHeightPx, blocks, hourMarkers, totalPlanMins }
+
+    return {
+      gridStartMins,
+      timelineBaseMins,
+      gridEndMins,
+      containerHeightPx,
+      blocks,
+      hourMarkers,
+      totalPlanMins,
+    }
   }, [tasks, dayStartTime])
 
   const nowLineTopPx = useMemo(() => {
@@ -344,9 +384,8 @@ export default function PlanPage() {
     void nowTick
     const n = new Date()
     const nowM = n.getHours() * 60 + n.getMinutes() + n.getSeconds() / 60
-    const gridStartMins = parseDayStartToMins(dayStartTime)
-    return DAY_GRID_PAD_Y + ((nowM - gridStartMins) / 60) * HOUR_HEIGHT_PX
-  }, [date, dayStartTime, nowTick])
+    return DAY_GRID_PAD_Y + ((nowM - dayTimelineModel.timelineBaseMins) / 60) * HOUR_HEIGHT_PX
+  }, [date, nowTick, dayTimelineModel.timelineBaseMins])
 
   useEffect(() => {
     setDate(todayIso())
@@ -1699,7 +1738,7 @@ export default function PlanPage() {
               >
                 {dayTimelineModel.hourMarkers.map(m => {
                   const topPx =
-                    DAY_GRID_PAD_Y + ((m - dayTimelineModel.gridStartMins) / 60) * HOUR_HEIGHT_PX
+                    DAY_GRID_PAD_Y + ((m - dayTimelineModel.timelineBaseMins) / 60) * HOUR_HEIGHT_PX
                   return (
                     <div
                       key={m}
@@ -1742,7 +1781,7 @@ export default function PlanPage() {
                 >
                   {dayTimelineModel.hourMarkers.map(m => {
                     const topPx =
-                      DAY_GRID_PAD_Y + ((m - dayTimelineModel.gridStartMins) / 60) * HOUR_HEIGHT_PX
+                      DAY_GRID_PAD_Y + ((m - dayTimelineModel.timelineBaseMins) / 60) * HOUR_HEIGHT_PX
                     return (
                       <div
                         key={`lbl-${m}`}
