@@ -271,6 +271,25 @@ a {
   .hm-shell {
     padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   }
+
+  .hm-shell-header {
+    padding: 0.4rem 1rem;
+    min-height: unset;
+  }
+
+  .hm-shell-brand {
+    font-size: 14px;
+  }
+
+  .hm-shell-brand svg {
+    width: 60px;
+    height: 14px;
+  }
+
+  .hm-shell-tagline,
+  .hm-commitment-engine {
+    display: none;
+  }
 }
 
 .hm-side-nav {
