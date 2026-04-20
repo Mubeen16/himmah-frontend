@@ -309,6 +309,8 @@ a {
 
   /* Loop column: gutters rail ↔ loop ↔ main; sticky below fixed shell header */
   .hm-loop-slot {
+    position: relative;
+    z-index: 50;
     /* Collapsed loop card 52px + ~16px rhythm; overrides Tailwind w-[232px] on the slot */
     width: 68px !important;
     max-width: 68px;

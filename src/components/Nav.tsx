@@ -32,9 +32,9 @@ function SideRailLayoutIcon() {
 const links = [
   { href: '/', label: 'today', Icon: NavIconToday },
   { href: '/plan', label: 'plan', Icon: NavIconPlan },
-  { href: '/review', label: 'review', Icon: NavIconReview },
-  { href: '/gate', label: 'gate', Icon: NavIconGate },
   { href: '/goals', label: 'goals', Icon: NavIconGoals },
+  { href: '/review', label: 'reflect', Icon: NavIconReview },
+  { href: '/gate', label: 'ideas', Icon: NavIconGate },
   { href: '/settings', label: 'settings', Icon: NavIconSettings },
 ] as const
 

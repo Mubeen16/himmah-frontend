@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
+import { triggerRefresh } from '@/lib/refresh'
 import styles from './goals.module.css'
 
 type Category = 'professional' | 'spiritual' | 'family' | 'health'
@@ -251,6 +252,7 @@ function GoalsPageContent() {
       })
       closeModal()
       await loadGoals()
+      triggerRefresh()
     } finally {
       setSaving(false)
     }
@@ -292,6 +294,7 @@ function GoalsPageContent() {
     }
     await api.patch(`/goals/${id}/`, { is_primary: true })
     await loadGoals()
+    triggerRefresh()
   }
 
   async function deleteGoal(id: number) {

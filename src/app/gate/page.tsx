@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
+import { triggerRefresh } from '@/lib/refresh'
 import styles from './gate.module.css'
 
 interface Distraction {
@@ -121,6 +122,7 @@ export default function GatePage() {
         revisit_after: revisit,
       })
       setIdeas(prev => [res.data, ...prev])
+      triggerRefresh()
       setTitle('')
       setDescription('')
       setRevisitMode('48h')
@@ -170,6 +172,7 @@ export default function GatePage() {
       }
       const res = await api.patch<Distraction>(`/distractions/${verdictId}/`, payload)
       setIdeas(prev => prev.map(d => (d.id === verdictId ? res.data : d)))
+      triggerRefresh()
       closeVerdict()
       setTab('decided')
     } finally {

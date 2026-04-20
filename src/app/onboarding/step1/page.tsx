@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
+import { triggerRefresh } from '@/lib/refresh'
 
 function todayIso(): string {
   const d = new Date()
@@ -63,6 +64,7 @@ export default function OnboardingStep1() {
         target_date: deadline,
         is_primary: true,
       })
+      triggerRefresh()
       router.push('/onboarding/step2')
     } catch {
       setError('something went wrong — try again')

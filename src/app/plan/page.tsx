@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } fr
 import { useRouter } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
+import { triggerRefresh } from '@/lib/refresh'
 import { formatLongDate } from '@/lib/formatDate'
 import styles from './plan.module.css'
 
@@ -681,6 +682,7 @@ export default function PlanPage() {
     setCreateOpen(false)
     await loadPlan(scheduleDate)
     await loadWeek(scheduleDate)
+    triggerRefresh()
   }
 
   function openCreateSheet() {

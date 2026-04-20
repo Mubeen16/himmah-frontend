@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { useRouter } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
+import { triggerRefresh } from '@/lib/refresh'
 import styles from './today.module.css'
 
 interface Goal {
@@ -329,6 +330,7 @@ export default function TodayPage() {
         await api.post(`/tasks/${task.id}/mark_done/`)
       }
       await loadForDate(viewDate)
+      triggerRefresh()
     } finally {
       setBusyTaskId(null)
     }
@@ -367,6 +369,7 @@ export default function TodayPage() {
       }
       setReflectionTask(null)
       await loadForDate(viewDate)
+      triggerRefresh()
     } finally {
       setReflSaving(false)
     }
@@ -394,6 +397,7 @@ export default function TodayPage() {
       }
       setReflectionTask(null)
       await loadForDate(viewDate)
+      triggerRefresh()
     } finally {
       setReflSaving(false)
     }
