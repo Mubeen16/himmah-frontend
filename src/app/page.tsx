@@ -810,8 +810,8 @@ export default function TodayPage() {
           </div>
         ) : null}
 
-        <button type="button" className={styles.gate} onClick={() => router.push('/gate')}>
-          + new idea? log it here first
+        <button type="button" className={styles.planFooterBtn} onClick={() => router.push('/plan')}>
+          add tasks on plan →
         </button>
       </div>
 

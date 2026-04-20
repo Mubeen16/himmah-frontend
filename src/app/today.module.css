@@ -345,11 +345,12 @@
 .taskTime { font-size: 12px; color: #a09b94; }
 .taskDuration { font-size: 13px; color: #9e9a93; font-weight: 500; flex-shrink: 0; margin-top: 2px; }
 
-.gate {
+.planFooterBtn {
   width: 100%;
   max-width: 100%;
   margin-left: 0;
   margin-right: 0;
+  margin-top: 0.75rem;
   background: transparent;
   border: 1px dashed #4a4a4a;
   border-radius: 10px;
@@ -365,7 +366,7 @@
   box-sizing: border-box;
 }
 
-.gate:hover {
+.planFooterBtn:hover {
   border-color: #5c5c5c;
   color: #c4bfb6;
 }
