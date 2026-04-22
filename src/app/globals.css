@@ -34,22 +34,6 @@
   --hm-space-6: 1.5rem;
 }
 
-:root[data-theme='light'] {
-  --bg: #f8f6f1;
-  --bg-card: #ffffff;
-  --bg-hover: #efebe4;
-  --border: #d9d2c8;
-  --border-subtle: #e4ddd2;
-  --text-primary: #1d1a16;
-  --text-secondary: #3f3932;
-  --text-muted: #595149;
-  --text-faint: #6a625a;
-  --text-fainter: #7b736b;
-  --text-label: #4e463d;
-  --text-hint: #746b63;
-  --accent: #1d1a16;
-}
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -663,45 +647,11 @@ a {
   max-width: 480px;
 }
 
-.hm-side-theme-toggle {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 9px;
-  padding: 0.5rem 0;
-  color: #8a8680;
-  border: 1px solid transparent;
-  background: transparent;
-  cursor: pointer;
-  font: inherit;
-  white-space: nowrap;
-  width: 100%;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.hm-side-theme-toggle:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-primary);
-}
-
 /* Mobile keyboard: reserve space below focused fields so scroll-into-view clears the keyboard */
 @media (max-width: 768px) {
   input:focus,
   textarea:focus,
   select:focus {
     scroll-margin-bottom: 320px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .hm-side-nav--expanded .hm-side-theme-toggle {
-    justify-content: flex-start;
-    padding-left: 0.45rem;
-    padding-right: 0.45rem;
   }
 }
