@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
 import { triggerRefresh } from '@/lib/refresh'
@@ -84,6 +84,28 @@ function formatTimeLabelDisplay(raw: string): string {
   return raw.replace(/\s*(am|pm)\s*$/i, m => m.trim().toUpperCase())
 }
 
+function normalizeTimeForInput(v: string | null | undefined): string {
+  if (!v || typeof v !== 'string') return '09:00'
+  const raw = v.replace('Z', '').trim().slice(0, 8)
+  const parts = raw.split(':')
+  const hh = String(Number(parts[0]) || 9).padStart(2, '0')
+  const mm = String(Number(parts[1]) || 0).padStart(2, '0')
+  const out = `${hh}:${mm}`
+  return /^\d{2}:\d{2}$/.test(out) ? out : '09:00'
+}
+
+function parseTimeMinutes(v: string): number | null {
+  if (!/^\d{2}:\d{2}$/.test(v)) return null
+  const [h, m] = v.split(':').map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+  return h * 60 + m
+}
+
+function normDate(s: string | null | undefined): string {
+  if (!s) return ''
+  return String(s).slice(0, 10)
+}
+
 function parseIsoLocal(iso: string): Date {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, m - 1, d)
@@ -158,6 +180,9 @@ function calcJourney(goal: Goal): { weekCurrent: number; weekTotal: number; prog
 
 export default function TodayPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isOnboarding = searchParams.get('onboarding') === 'true'
+  const onboardingStep = searchParams.get('step')
   const [loading, setLoading] = useState(true)
   const [plan, setPlan] = useState<DayPlan | null>(null)
   const [goals, setGoals] = useState<Goal[]>([])
@@ -192,6 +217,15 @@ export default function TodayPage() {
   const [reflMissed, setReflMissed] = useState('')
   const [reflActualMins, setReflActualMins] = useState<number | string>('')
   const [reflSaving, setReflSaving] = useState(false)
+  const [addTaskOpen, setAddTaskOpen] = useState(false)
+  const [taskTitle, setTaskTitle] = useState('')
+  const [taskDescription, setTaskDescription] = useState('')
+  const [taskDate, setTaskDate] = useState(viewDate)
+  const [taskStartTime, setTaskStartTime] = useState('09:30')
+  const [taskEndTime, setTaskEndTime] = useState('10:30')
+  const [taskAllDay, setTaskAllDay] = useState(false)
+  const [taskGoalId, setTaskGoalId] = useState<number | null>(null)
+  const [taskSaving, setTaskSaving] = useState(false)
   const firstPlanFetch = useRef(true)
 
   const loadForDate = useCallback(async (date: string) => {
@@ -279,6 +313,15 @@ export default function TodayPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [reflectionTask])
 
+  useEffect(() => {
+    if (!addTaskOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAddTaskOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [addTaskOpen])
+
   const primaryGoal = useMemo(() => {
     const byFlag = goals.find(g => g.is_primary === true)
     if (byFlag) return byFlag
@@ -307,6 +350,63 @@ export default function TodayPage() {
   const remainingMinutes =
     sortedTasks.filter(t => !t.done).reduce((sum, t) => sum + t.estimated_mins, 0)
   const progressPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
+
+  function openAddTaskModal() {
+    const fallbackGoalId = primaryGoal?.id ?? goals[0]?.id ?? null
+    setTaskGoalId(fallbackGoalId)
+    setTaskTitle('')
+    setTaskDescription('')
+    setTaskDate(viewDate)
+    setTaskStartTime('09:30')
+    setTaskEndTime('10:30')
+    setTaskAllDay(false)
+    setAddTaskOpen(true)
+  }
+
+  async function resolveDayPlanId(scheduleDate: string): Promise<number> {
+    const target = normDate(scheduleDate)
+    if (!target) throw new Error('invalid schedule date')
+    const existingRes = await api.get<DayPlan[]>('/dayplans/', { params: { date: target } })
+    const existing = existingRes.data[0]
+    if (existing) return existing.id
+    const created = await api.post<DayPlan>('/dayplans/', { date: target })
+    return created.data.id
+  }
+
+  async function addTaskFromToday() {
+    if (!taskTitle.trim() || taskGoalId == null || taskSaving) return
+    setTaskSaving(true)
+    try {
+      const scheduleDate = normDate(taskDate || viewDate)
+      if (!scheduleDate) return
+      const pId = await resolveDayPlanId(scheduleDate)
+      const startMins = parseTimeMinutes(taskStartTime)
+      const endMins = parseTimeMinutes(taskEndTime)
+      const computedMins =
+        !taskAllDay && startMins != null && endMins != null && endMins > startMins
+          ? endMins - startMins
+          : 60
+      const safeMins = Math.max(5, Math.round(computedMins))
+      await api.post('/tasks/', {
+        title: taskTitle.trim(),
+        description: taskDescription.trim(),
+        scheduled_date: scheduleDate,
+        estimated_mins: safeMins,
+        goal: taskGoalId,
+        day_plan: pId,
+        is_all_day: taskAllDay,
+        planned_start_time: taskAllDay ? null : normalizeTimeForInput(taskStartTime),
+        planned_end_time: taskAllDay ? null : normalizeTimeForInput(taskEndTime),
+        due_date: null,
+        order: sortedTasks.length + 1,
+      })
+      await loadForDate(scheduleDate)
+      triggerRefresh()
+      setAddTaskOpen(false)
+    } finally {
+      setTaskSaving(false)
+    }
+  }
 
   async function patchMorning(next: {
     morning_energy: number | null
@@ -592,6 +692,21 @@ export default function TodayPage() {
   return (
     <Shell wide>
       <div className={styles.page}>
+        {isOnboarding && onboardingStep === 'task' ? (
+          <div
+            style={{
+              marginBottom: 12,
+              fontSize: 12,
+              color: '#b8b8b8',
+              border: '1px solid #2a2a2a',
+              background: '#141414',
+              borderRadius: 10,
+              padding: '10px 12px',
+            }}
+          >
+            onboarding step 2/4: add your tasks here (same real app form).
+          </div>
+        ) : null}
         <div className={styles.hero}>
           {renderHeroDateBar()}
           <div
@@ -810,10 +925,199 @@ export default function TodayPage() {
           </div>
         ) : null}
 
-        <button type="button" className={styles.planFooterBtn} onClick={() => router.push('/plan')}>
+        <button type="button" className={styles.planFooterBtn} onClick={() => openAddTaskModal()}>
           add tasks on plan →
         </button>
+        {isOnboarding && onboardingStep === 'task' && sortedTasks.length > 0 ? (
+          <button
+            type="button"
+            className={styles.planFooterBtn}
+            onClick={() => router.push('/plan?onboarding=true&step=today')}
+          >
+            continue to today intention →
+          </button>
+        ) : null}
       </div>
+
+      {addTaskOpen ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 100,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            boxSizing: 'border-box',
+          }}
+          onClick={() => setAddTaskOpen(false)}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 640,
+              background: '#141414',
+              border: '1px solid #2a2a2a',
+              borderRadius: 16,
+              padding: '20px 20px 24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+              maxHeight: 'min(85vh, calc(100vh - 32px))',
+              overflowY: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                add task
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddTaskOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#666',
+                  fontSize: 22,
+                  lineHeight: 1,
+                  cursor: 'pointer',
+                }}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <input
+              value={taskTitle}
+              onChange={e => setTaskTitle(e.target.value)}
+              placeholder="Add title"
+              style={{
+                width: '100%',
+                background: '#1b1b1b',
+                border: '1px solid #2a2a2a',
+                borderRadius: 10,
+                padding: '12px 13px',
+                fontSize: 18,
+                color: '#e8e4dc',
+                fontFamily: 'inherit',
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+              <input
+                type="date"
+                value={taskDate}
+                onChange={e => setTaskDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: '#181818',
+                  border: '1px solid #333',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  color: '#d8d5cd',
+                }}
+              />
+              {!taskAllDay ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center' }}>
+                  <input
+                    type="time"
+                    value={taskStartTime}
+                    onChange={e => setTaskStartTime(e.target.value)}
+                    style={{
+                      width: '100%',
+                      background: '#181818',
+                      border: '1px solid #333',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      color: '#d8d5cd',
+                    }}
+                  />
+                  <span style={{ color: '#666' }}>–</span>
+                  <input
+                    type="time"
+                    value={taskEndTime}
+                    onChange={e => setTaskEndTime(e.target.value)}
+                    style={{
+                      width: '100%',
+                      background: '#181818',
+                      border: '1px solid #333',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      color: '#d8d5cd',
+                    }}
+                  />
+                </div>
+              ) : null}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#999', fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={taskAllDay}
+                  onChange={e => setTaskAllDay(e.target.checked)}
+                />
+                All day
+              </label>
+            </div>
+            <textarea
+              value={taskDescription}
+              onChange={e => setTaskDescription(e.target.value)}
+              placeholder="Add description"
+              rows={3}
+              style={{
+                width: '100%',
+                background: '#181818',
+                border: '1px solid #333',
+                borderRadius: 10,
+                padding: '10px 12px',
+                color: '#d8d5cd',
+                fontFamily: 'inherit',
+                resize: 'vertical',
+              }}
+            />
+            <select
+              value={taskGoalId ?? ''}
+              onChange={e => setTaskGoalId(e.target.value ? Number(e.target.value) : null)}
+              style={{
+                width: '100%',
+                background: '#181818',
+                border: '1px solid #333',
+                borderRadius: 10,
+                padding: '10px 12px',
+                color: '#d8d5cd',
+                fontFamily: 'inherit',
+              }}
+            >
+              {goals.map(g => (
+                <option key={g.id} value={g.id}>
+                  {g.title}
+                </option>
+              ))}
+            </select>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => void addTaskFromToday()}
+                disabled={!taskTitle.trim() || taskGoalId == null || taskSaving}
+                style={{
+                  background: '#e8e4dc',
+                  color: '#0f0f0f',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '10px 18px',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  opacity: !taskTitle.trim() || taskGoalId == null || taskSaving ? 0.45 : 1,
+                }}
+              >
+                {taskSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {reflectionTask ? (
         <div

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
 import styles from './review.module.css'
@@ -43,6 +44,11 @@ function todayIso(): string {
 }
 
 export default function ReviewPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const isOnboarding = searchParams.get('onboarding') === 'true'
+  const onboardingStep = searchParams.get('step')
+
   function clean(v: string | null | undefined): string {
     if (!v) return ''
     const t = v.trim()
@@ -133,6 +139,21 @@ export default function ReviewPage() {
   return (
     <Shell wide>
       <div className={styles.page} aria-busy={loading}>
+        {isOnboarding && onboardingStep === 'reflect' ? (
+          <div
+            style={{
+              marginBottom: 12,
+              fontSize: 12,
+              color: '#b8b8b8',
+              border: '1px solid #2a2a2a',
+              background: '#141414',
+              borderRadius: 10,
+              padding: '10px 12px',
+            }}
+          >
+            onboarding step 4/4: complete your reflect form here.
+          </div>
+        ) : null}
         {/* GREETING */}
         <div className={styles.hero}>
           <div className={styles.heroDate}>{dateLabel}</div>
@@ -258,17 +279,17 @@ export default function ReviewPage() {
           </div>
         </div>
 
-        {/* BARAKAH */}
+        {/* COHERENCE / MOMENTUM */}
         <div className={styles.barakah}>
           <div>
-            <div className={styles.barakahTitle}>did you feel barakah today?</div>
-            <div className={styles.barakahSub}>blessing, flow, things clicking into place</div>
+            <div className={styles.barakahTitle}>how much did today feel coherent?</div>
+            <div className={styles.barakahSub}>did things align? did your actions match your intention?</div>
           </div>
           <button
             type="button"
             className={`${styles.toggle} ${barakah ? styles.toggleOn : ''}`}
             onClick={() => setBarakah(o => !o)}
-            aria-label="Toggle barakah"
+            aria-label="Toggle coherence"
           >
             <div className={styles.toggleKnob} />
           </button>
@@ -296,6 +317,16 @@ export default function ReviewPage() {
         >
           {saving ? 'saving...' : saved ? 'saved ✓' : 'save review'}
         </button>
+        {isOnboarding && onboardingStep === 'reflect' ? (
+          <button
+            type="button"
+            className={styles.saveBtn}
+            onClick={() => router.push('/')}
+            style={{ marginTop: 10 }}
+          >
+            finish onboarding →
+          </button>
+        ) : null}
       </div>
     </Shell>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
 import { triggerRefresh } from '@/lib/refresh'
@@ -249,6 +249,9 @@ const EMPTY_DAY_VISIBLE_HOURS = 12
 
 export default function PlanPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isOnboarding = searchParams.get('onboarding') === 'true'
+  const onboardingStep = searchParams.get('step')
   const [date, setDate] = useState<string | null>(null)
   const [planId, setPlanId] = useState<Id>(null)
   const [goals, setGoals] = useState<Goal[]>([])
@@ -1450,6 +1453,21 @@ export default function PlanPage() {
             </div>
           </div>
         </div>
+        {isOnboarding && onboardingStep === 'today' ? (
+          <div
+            style={{
+              margin: '0 16px 12px',
+              fontSize: 12,
+              color: '#b8b8b8',
+              border: '1px solid #2a2a2a',
+              background: '#141414',
+              borderRadius: 10,
+              padding: '10px 12px',
+            }}
+          >
+            onboarding step 3/4: set your today intention here using the same real app intention form.
+          </div>
+        ) : null}
 
         {tasks.length === 0 ? (
           <div className={styles.planEmptyGuided}>
@@ -1539,6 +1557,18 @@ export default function PlanPage() {
             </span>
           </button>
         </div>
+        {isOnboarding && onboardingStep === 'today' && dayIntention ? (
+          <div style={{ padding: '0 16px', marginBottom: 10 }}>
+            <button
+              type="button"
+              className={styles.planEmptyCta}
+              onClick={() => router.push('/review?onboarding=true&step=reflect')}
+              style={{ width: '100%' }}
+            >
+              continue to reflect →
+            </button>
+          </div>
+        ) : null}
 
         <main className={styles.planMain} aria-label="Day schedule">
           <div

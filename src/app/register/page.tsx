@@ -36,7 +36,7 @@ export default function RegisterPage() {
       localStorage.setItem('refresh_token', res.data.refresh)
       localStorage.setItem('username', res.data.username)
       document.cookie = `access_token=${res.data.access}; path=/; max-age=86400`
-      router.push('/onboarding/step1')
+      router.push('/goals?onboarding=true&step=goal')
     } catch (err: unknown) {
       const data = err && typeof err === 'object' && 'response' in err
         ? (err as { response?: { data?: { error?: string } } }).response?.data

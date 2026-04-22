@@ -102,6 +102,7 @@ function colorsForCategory(category: string) {
 function GoalsPageContent() {
   const searchParams = useSearchParams()
   const isOnboarding = searchParams.get('onboarding') === 'true'
+  const onboardingStep = searchParams.get('step')
   const [displayName] = useState(() =>
     typeof window !== 'undefined' ? (localStorage.getItem('username') ?? 'there') : 'there',
   )
@@ -418,6 +419,30 @@ function GoalsPageContent() {
       <div className={styles.page}>
         {isOnboarding && goals.length === 0 ? (
           <div className={styles.onboardingBanner}>start here — add your first goal before planning your day</div>
+        ) : null}
+        {isOnboarding && onboardingStep === 'goal' && goals.length > 0 ? (
+          <div className={styles.onboardingBanner}>
+            goal saved. continue to task using the real task form.
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = '/?onboarding=true&step=task'
+              }}
+              style={{
+                marginLeft: 10,
+                background: '#141414',
+                border: '1px solid #2a2a2a',
+                color: '#e8e4dc',
+                borderRadius: 8,
+                padding: '6px 10px',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 12,
+              }}
+            >
+              continue →
+            </button>
+          </div>
         ) : null}
         <div className={styles.hero}>
           <div className={styles.heroDate}>{dateLabel}</div>
