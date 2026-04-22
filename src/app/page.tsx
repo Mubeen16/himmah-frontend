@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
@@ -178,7 +178,7 @@ function calcJourney(goal: Goal): { weekCurrent: number; weekTotal: number; prog
   return { weekCurrent, weekTotal, progress }
 }
 
-export default function TodayPage() {
+function TodayPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isOnboarding = searchParams.get('onboarding') === 'true'
@@ -1398,5 +1398,21 @@ export default function TodayPage() {
         </div>
       ) : null}
     </Shell>
+  )
+}
+
+export default function TodayPage() {
+  return (
+    <Suspense
+      fallback={
+        <Shell wide>
+          <div className={styles.page}>
+            <p style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-secondary)' }}>loading...</p>
+          </div>
+        </Shell>
+      }
+    >
+      <TodayPageContent />
+    </Suspense>
   )
 }
