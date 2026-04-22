@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
@@ -43,7 +43,7 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-export default function ReviewPage() {
+function ReviewPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isOnboarding = searchParams.get('onboarding') === 'true'
@@ -329,5 +329,21 @@ export default function ReviewPage() {
         ) : null}
       </div>
     </Shell>
+  )
+}
+
+export default function ReviewPage() {
+  return (
+    <Suspense
+      fallback={
+        <Shell wide>
+          <div className={styles.reviewPage}>
+            <p style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-secondary)' }}>loading...</p>
+          </div>
+        </Shell>
+      }
+    >
+      <ReviewPageContent />
+    </Suspense>
   )
 }

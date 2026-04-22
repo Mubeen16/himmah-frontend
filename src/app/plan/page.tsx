@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
 import api from '@/lib/api'
@@ -247,7 +247,7 @@ const DAY_GRID_PAD_Y = 8
 /** When the day has no tasks, still show this many hours from day start (Google-style scrollable day). */
 const EMPTY_DAY_VISIBLE_HOURS = 12
 
-export default function PlanPage() {
+function PlanPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const isOnboarding = searchParams.get('onboarding') === 'true'
@@ -1951,5 +1951,19 @@ export default function PlanPage() {
       </div>
       </div>
     </Shell>
+  )
+}
+
+export default function PlanPage() {
+  return (
+    <Suspense
+      fallback={
+        <Shell wide>
+          <p style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-muted)' }}>loading...</p>
+        </Shell>
+      }
+    >
+      <PlanPageContent />
+    </Suspense>
   )
 }
