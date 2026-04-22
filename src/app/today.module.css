@@ -109,7 +109,7 @@
 }
 
 .heroDatePickLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: #9a9690;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -171,11 +171,11 @@
 }
 .journeyBgText { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); text-align: center; font-size: 42px; font-weight: 700; color: #5c3d12; letter-spacing: -.03em; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 12px; }
 .journeyTop { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1; }
-.journeyLabel { font-size: 10px; color: #d4a23a; text-transform: uppercase; letter-spacing: .06em; }
-.journeyDate { font-size: 10px; color: #e0b04d; }
+.journeyLabel { font-size: 11px; color: #d4a23a; text-transform: uppercase; letter-spacing: .06em; }
+.journeyDate { font-size: 11px; color: #e0b04d; }
 .journeyBottom { display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1; }
 .journeyWeek { font-size: 16px; font-weight: 500; color: #e8e4dc; line-height: 1; }
-.journeyWeekSub { font-size: 11px; font-weight: 400; color: #c9942e; }
+.journeyWeekSub { font-size: 12px; font-weight: 400; color: #c9942e; }
 .journeyBarWrap { width: 80px; height: 2px; background: #5c3d12; border-radius: 1px; overflow: hidden; }
 .journeyBarFill { height: 100%; border-radius: 1px; background: #EF9F27; }
 
@@ -191,9 +191,9 @@
   flex-shrink: 0;
   min-width: 0;
 }
-.checkinLabel { font-size: 10px; color: #9a9690; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+.checkinLabel { font-size: 11px; color: #9a9690; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
 .checkinRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.checkinName { font-size: 11px; color: #b0aca4; width: 40px; }
+.checkinName { font-size: 12px; color: #b0aca4; width: 40px; }
 .checkinDots {
   display: flex;
   gap: 3px;
@@ -226,7 +226,7 @@
 }
 
 .tasksHeader { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 6px; }
-.tasksTitle { font-size: 11px; color: #9a9690; text-transform: uppercase; letter-spacing: .1em; }
+.tasksTitle { font-size: 12px; color: #9a9690; text-transform: uppercase; letter-spacing: .1em; }
 .tasksStats { display: flex; align-items: baseline; gap: 5px; }
 .tasksCount { font-size: 28px; font-weight: 500; color: #f2efe8; line-height: 1; letter-spacing: -.02em; }
 .tasksTotal { font-size: 14px; color: #a09b94; }
@@ -307,7 +307,7 @@
 .taskTitleDone { text-decoration: line-through; color: #4a4844; opacity: .85; }
 .taskMeta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin-top: 6px; }
 .goalBadge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: .04em;
   text-transform: none;
@@ -509,4 +509,20 @@
 
 .parkedBanner { background: #181818; border: 1px solid #EF9F27; border-radius: 8px; padding: .65rem .9rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
 .parkedText { font-size: 13px; color: #EF9F27; }
-.parkedBtn { font-size: 11px; color: #EF9F27; background: transparent; border: none; cursor: pointer; }
+.parkedBtn { font-size: 12px; color: #EF9F27; background: transparent; border: none; cursor: pointer; }
+
+@media (max-width: 1023px) {
+  .page button,
+  .page input,
+  .page select,
+  .page textarea {
+    font-size: 16px;
+  }
+
+  .planFooterBtn,
+  .executeEmptyBtn,
+  .guidedLoopLink,
+  .parkedBtn {
+    font-size: 14px;
+  }
+}

@@ -7,20 +7,20 @@
   --border: #242424;
   --border-subtle: #202020;
   --text-primary: #e8e4dc;
-  --text-secondary: #aaa;
-  --text-muted: #777;
-  --text-faint: #666;
-  --text-fainter: #5a5a5a;
-  --text-label: #888;
-  --text-hint: #666;
+  --text-secondary: #beb9b0;
+  --text-muted: #9d978f;
+  --text-faint: #878178;
+  --text-fainter: #777169;
+  --text-label: #a39d95;
+  --text-hint: #8f8981;
   --accent: #e8e4dc;
   --teal: #5DCAA5;
   --amber: #EF9F27;
   --red: #D85A30;
   --fs-micro: 11px;
-  --fs-meta: 13px;
-  --fs-body-small: 14px;
-  --fs-title: 17px;
+  --fs-meta: 14px;
+  --fs-body-small: 15px;
+  --fs-title: 18px;
   --fs-hero: 22px;
   /* Fixed shell header + safe area — main column & desktop sidebar top align to this */
   /* ~logo + tagline + border + header padding; slightly generous so first line never tucks under bar */
@@ -48,8 +48,8 @@ html, body {
   background: var(--bg);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 15px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.75;
   -webkit-font-smoothing: antialiased;
   min-height: 100%;
   font-weight: 400;

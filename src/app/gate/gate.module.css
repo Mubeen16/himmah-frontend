@@ -48,7 +48,7 @@
   gap: 8px;
 }
 .contextLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: #9a9a9a;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -85,7 +85,7 @@
   gap: 12px;
 }
 .captureLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: #9a9a9a;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -154,7 +154,7 @@
 }
 
 .revisitLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: #9a9a9a;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -345,7 +345,7 @@
 }
 
 .badgeWaiting {
-  font-size: 11px;
+  font-size: 12px;
   padding: 4px 10px;
   border-radius: 20px;
   background: #242424;
@@ -355,7 +355,7 @@
   margin-left: 10px;
 }
 .badgeReady {
-  font-size: 11px;
+  font-size: 12px;
   padding: 4px 10px;
   border-radius: 20px;
   background: #3a2808;
@@ -366,7 +366,7 @@
   font-weight: 500;
 }
 .badgePivot {
-  font-size: 11px;
+  font-size: 12px;
   padding: 4px 10px;
   border-radius: 20px;
   background: #0f221c;
@@ -377,7 +377,7 @@
   font-weight: 500;
 }
 .badgeParked {
-  font-size: 11px;
+  font-size: 12px;
   padding: 4px 10px;
   border-radius: 20px;
   background: #242424;
@@ -387,7 +387,7 @@
   margin-left: 10px;
 }
 .badgeRejected {
-  font-size: 11px;
+  font-size: 12px;
   padding: 4px 10px;
   border-radius: 20px;
   background: #242424;
@@ -449,7 +449,7 @@
   padding: 16px 18px;
 }
 .insightTitle {
-  font-size: 11px;
+  font-size: 12px;
   color: #9a9a9a;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -474,7 +474,7 @@
   line-height: 1;
 }
 .insightLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: #8a8a8a;
   margin-top: 5px;
 }
@@ -524,7 +524,7 @@
   font-weight: 500;
 }
 .modalFieldLabel {
-  font-size: 11px;
+  font-size: 12px;
   color: #9a9a9a;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -650,4 +650,21 @@
 
 .gateZeroBody + .gateZeroBody {
   margin-top: 8px;
+}
+
+@media (max-width: 1023px) {
+  .page button,
+  .page input,
+  .page select,
+  .page textarea {
+    font-size: 16px;
+  }
+
+  .contextLabel,
+  .captureLabel,
+  .revisitLabel,
+  .insightTitle,
+  .modalFieldLabel {
+    font-size: 12px;
+  }
 }
