@@ -3,8 +3,25 @@
 import { Fragment, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Shell from '@/components/Shell'
+import AddTaskModal from '@/components/today/AddTaskModal'
+import ReflectionModal from '@/components/today/ReflectionModal'
 import api from '@/lib/api'
 import { triggerRefresh } from '@/lib/refresh'
+import {
+  addDaysIso,
+  calcJourney,
+  capitalizeFirstLetter,
+  formatDateLabel,
+  formatTimeLabelDisplay,
+  greetingByHour,
+  minutesToText,
+  moveTaskInList,
+  normDate,
+  normalizeTimeForInput,
+  parseIsoLocal,
+  parseTimeMinutes,
+  todayIso,
+} from './today/utils'
 import styles from './today.module.css'
 
 interface Goal {
@@ -59,92 +76,6 @@ interface DayPlan {
   tasks: Task[]
 }
 
-function todayIso(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function formatDateLabel(d: Date): string {
-  return d.toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-/** Sentence case: first character upper, rest unchanged (locale strings stay natural). */
-function capitalizeFirstLetter(text: string): string {
-  const t = text.trim()
-  if (!t) return t
-  return t.charAt(0).toUpperCase() + t.slice(1)
-}
-
-function formatTimeLabelDisplay(raw: string): string {
-  return raw.replace(/\s*(am|pm)\s*$/i, m => m.trim().toUpperCase())
-}
-
-function normalizeTimeForInput(v: string | null | undefined): string {
-  if (!v || typeof v !== 'string') return '09:00'
-  const raw = v.replace('Z', '').trim().slice(0, 8)
-  const parts = raw.split(':')
-  const hh = String(Number(parts[0]) || 9).padStart(2, '0')
-  const mm = String(Number(parts[1]) || 0).padStart(2, '0')
-  const out = `${hh}:${mm}`
-  return /^\d{2}:\d{2}$/.test(out) ? out : '09:00'
-}
-
-function parseTimeMinutes(v: string): number | null {
-  if (!/^\d{2}:\d{2}$/.test(v)) return null
-  const [h, m] = v.split(':').map(Number)
-  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
-  return h * 60 + m
-}
-
-function normDate(s: string | null | undefined): string {
-  if (!s) return ''
-  return String(s).slice(0, 10)
-}
-
-function parseIsoLocal(iso: string): Date {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-function addDaysIso(iso: string, delta: number): string {
-  const dt = parseIsoLocal(iso)
-  dt.setDate(dt.getDate() + delta)
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
-}
-
-function greetingByHour(hour: number, name: string): string {
-  if (hour < 12) return `good morning, ${name}`
-  if (hour < 17) return `keep going, ${name}`
-  /* Evening on Today is still “execute” — save reflect language for /review */
-  if (hour < 21) return `keep pushing, ${name}`
-  return `plan tomorrow before you sleep, ${name}`
-}
-
-function minutesToText(totalMinutes: number): string {
-  const hours = Math.floor(totalMinutes / 60)
-  const mins = totalMinutes % 60
-  if (mins === 0) return `${hours}h left`
-  return `${hours}h ${mins}m left`
-}
-
-function moveTaskInList<T>(items: T[], from: number, toBefore: number): T[] {
-  const n = items.length
-  if (from < 0 || from >= n) return items
-  const clamped = Math.max(0, Math.min(toBefore, n))
-  const next = [...items]
-  const [item] = next.splice(from, 1)
-  let insertAt = clamped
-  if (from < clamped) insertAt = clamped - 1
-  insertAt = Math.max(0, Math.min(insertAt, next.length))
-  next.splice(insertAt, 0, item)
-  return next
-}
-
 function goalBadgeForTask(
   goal: Task['goal_detail'],
   primaryGoalId: number | null
@@ -166,16 +97,25 @@ function goalBadgeForTask(
   }
 }
 
-function calcJourney(goal: Goal): { weekCurrent: number; weekTotal: number; progress: number } {
-  const start = new Date(goal.start_date)
-  const end = new Date(goal.target_date)
-  const now = new Date()
-  const daysTotal = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000))
-  const weekTotal = Math.max(1, Math.floor(daysTotal / 7))
-  const daysElapsed = Math.max(0, Math.ceil((now.getTime() - start.getTime()) / 86400000))
-  const weekCurrent = Math.min(weekTotal, Math.max(1, Math.floor(daysElapsed / 7) + 1))
-  const progress = Math.min(100, Math.max(0, Math.round((weekCurrent / weekTotal) * 100)))
-  return { weekCurrent, weekTotal, progress }
+function useEscapeToClose(enabled: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!enabled) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [enabled, onClose])
+}
+
+function LoadingFallback() {
+  return (
+    <Shell wide>
+      <div className={styles.page}>
+        <p style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-secondary)' }}>loading...</p>
+      </div>
+    </Shell>
+  )
 }
 
 function TodayPageContent() {
@@ -304,23 +244,8 @@ function TodayPageContent() {
     return () => window.clearInterval(timer)
   }, [])
 
-  useEffect(() => {
-    if (!reflectionTask) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setReflectionTask(null)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [reflectionTask])
-
-  useEffect(() => {
-    if (!addTaskOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setAddTaskOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [addTaskOpen])
+  useEscapeToClose(Boolean(reflectionTask), () => setReflectionTask(null))
+  useEscapeToClose(addTaskOpen, () => setAddTaskOpen(false))
 
   const primaryGoal = useMemo(() => {
     const byFlag = goals.find(g => g.is_primary === true)
@@ -444,26 +369,28 @@ function TodayPageContent() {
     setReflActualMins(task.task_reflection?.actual_mins ?? '')
   }
 
+  async function saveTaskReflection(task: Task) {
+    const payload = {
+      note: reflNote,
+      what_went_well: reflWentWell,
+      what_missed: reflMissed,
+      actual_mins: reflActualMins !== '' ? Number(reflActualMins) : null,
+    }
+    if (task.task_reflection) {
+      await api.patch(`/taskreflections/${task.task_reflection.id}/`, payload)
+      return
+    }
+    await api.post('/taskreflections/', {
+      task: task.id,
+      ...payload,
+    })
+  }
+
   async function markDoneWithReflection() {
     if (!reflectionTask) return
     setReflSaving(true)
     try {
-      if (reflectionTask.task_reflection) {
-        await api.patch(`/taskreflections/${reflectionTask.task_reflection.id}/`, {
-          note: reflNote,
-          what_went_well: reflWentWell,
-          what_missed: reflMissed,
-          actual_mins: reflActualMins !== '' ? Number(reflActualMins) : null,
-        })
-      } else {
-        await api.post('/taskreflections/', {
-          task: reflectionTask.id,
-          note: reflNote,
-          what_went_well: reflWentWell,
-          what_missed: reflMissed,
-          actual_mins: reflActualMins !== '' ? Number(reflActualMins) : null,
-        })
-      }
+      await saveTaskReflection(reflectionTask)
       if (!reflectionTask.done) {
         await api.post(`/tasks/${reflectionTask.id}/mark_done/`)
       }
@@ -479,22 +406,7 @@ function TodayPageContent() {
     if (!reflectionTask) return
     setReflSaving(true)
     try {
-      if (reflectionTask.task_reflection) {
-        await api.patch(`/taskreflections/${reflectionTask.task_reflection.id}/`, {
-          note: reflNote,
-          what_went_well: reflWentWell,
-          what_missed: reflMissed,
-          actual_mins: reflActualMins !== '' ? Number(reflActualMins) : null,
-        })
-      } else {
-        await api.post('/taskreflections/', {
-          task: reflectionTask.id,
-          note: reflNote,
-          what_went_well: reflWentWell,
-          what_missed: reflMissed,
-          actual_mins: reflActualMins !== '' ? Number(reflActualMins) : null,
-        })
-      }
+      await saveTaskReflection(reflectionTask)
       setReflectionTask(null)
       await loadForDate(viewDate)
       triggerRefresh()
@@ -637,13 +549,7 @@ function TodayPageContent() {
   )
 
   if (loading) {
-    return (
-      <Shell wide>
-        <div className={styles.page}>
-          <p style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-secondary)' }}>loading...</p>
-        </div>
-      </Shell>
-    )
+    return <LoadingFallback />
   }
 
   if (!plan) {
@@ -939,479 +845,50 @@ function TodayPageContent() {
         ) : null}
       </div>
 
-      {addTaskOpen ? (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 100,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-            boxSizing: 'border-box',
-          }}
-          onClick={() => setAddTaskOpen(false)}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 640,
-              background: '#141414',
-              border: '1px solid #2a2a2a',
-              borderRadius: 16,
-              padding: '20px 20px 24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 14,
-              maxHeight: 'min(85vh, calc(100vh - 32px))',
-              overflowY: 'auto',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: '.08em' }}>
-                add task
-              </div>
-              <button
-                type="button"
-                onClick={() => setAddTaskOpen(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#666',
-                  fontSize: 22,
-                  lineHeight: 1,
-                  cursor: 'pointer',
-                }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <input
-              value={taskTitle}
-              onChange={e => setTaskTitle(e.target.value)}
-              placeholder="Add title"
-              style={{
-                width: '100%',
-                background: '#1b1b1b',
-                border: '1px solid #2a2a2a',
-                borderRadius: 10,
-                padding: '12px 13px',
-                fontSize: 18,
-                color: '#e8e4dc',
-                fontFamily: 'inherit',
-                outline: 'none',
-              }}
-            />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
-              <input
-                type="date"
-                value={taskDate}
-                onChange={e => setTaskDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: '#181818',
-                  border: '1px solid #333',
-                  borderRadius: 8,
-                  padding: '10px 12px',
-                  color: '#d8d5cd',
-                }}
-              />
-              {!taskAllDay ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'center' }}>
-                  <input
-                    type="time"
-                    value={taskStartTime}
-                    onChange={e => setTaskStartTime(e.target.value)}
-                    style={{
-                      width: '100%',
-                      background: '#181818',
-                      border: '1px solid #333',
-                      borderRadius: 8,
-                      padding: '10px 12px',
-                      color: '#d8d5cd',
-                    }}
-                  />
-                  <span style={{ color: '#666' }}>–</span>
-                  <input
-                    type="time"
-                    value={taskEndTime}
-                    onChange={e => setTaskEndTime(e.target.value)}
-                    style={{
-                      width: '100%',
-                      background: '#181818',
-                      border: '1px solid #333',
-                      borderRadius: 8,
-                      padding: '10px 12px',
-                      color: '#d8d5cd',
-                    }}
-                  />
-                </div>
-              ) : null}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#999', fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={taskAllDay}
-                  onChange={e => setTaskAllDay(e.target.checked)}
-                />
-                All day
-              </label>
-            </div>
-            <textarea
-              value={taskDescription}
-              onChange={e => setTaskDescription(e.target.value)}
-              placeholder="Add description"
-              rows={3}
-              style={{
-                width: '100%',
-                background: '#181818',
-                border: '1px solid #333',
-                borderRadius: 10,
-                padding: '10px 12px',
-                color: '#d8d5cd',
-                fontFamily: 'inherit',
-                resize: 'vertical',
-              }}
-            />
-            <select
-              value={taskGoalId ?? ''}
-              onChange={e => setTaskGoalId(e.target.value ? Number(e.target.value) : null)}
-              style={{
-                width: '100%',
-                background: '#181818',
-                border: '1px solid #333',
-                borderRadius: 10,
-                padding: '10px 12px',
-                color: '#d8d5cd',
-                fontFamily: 'inherit',
-              }}
-            >
-              {goals.map(g => (
-                <option key={g.id} value={g.id}>
-                  {g.title}
-                </option>
-              ))}
-            </select>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => void addTaskFromToday()}
-                disabled={!taskTitle.trim() || taskGoalId == null || taskSaving}
-                style={{
-                  background: '#e8e4dc',
-                  color: '#0f0f0f',
-                  border: 'none',
-                  borderRadius: 10,
-                  padding: '10px 18px',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  opacity: !taskTitle.trim() || taskGoalId == null || taskSaving ? 0.45 : 1,
-                }}
-              >
-                {taskSaving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <AddTaskModal
+        open={addTaskOpen}
+        title={taskTitle}
+        description={taskDescription}
+        date={taskDate}
+        startTime={taskStartTime}
+        endTime={taskEndTime}
+        allDay={taskAllDay}
+        goalId={taskGoalId}
+        goals={goals}
+        saving={taskSaving}
+        onClose={() => setAddTaskOpen(false)}
+        onTitleChange={setTaskTitle}
+        onDescriptionChange={setTaskDescription}
+        onDateChange={setTaskDate}
+        onStartTimeChange={setTaskStartTime}
+        onEndTimeChange={setTaskEndTime}
+        onAllDayChange={setTaskAllDay}
+        onGoalChange={setTaskGoalId}
+        onSave={() => void addTaskFromToday()}
+      />
 
-      {reflectionTask ? (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 100,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 16,
-            boxSizing: 'border-box',
-          }}
-          onClick={() => setReflectionTask(null)}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: 640,
-              background: '#141414',
-              border: '1px solid #2a2a2a',
-              borderRadius: 16,
-              padding: '20px 20px 32px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 16,
-              maxHeight: 'min(85vh, calc(100vh - 32px))',
-              overflowY: 'auto',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: '#444',
-                  textTransform: 'uppercase',
-                  letterSpacing: '.08em',
-                  marginBottom: 6,
-                }}
-              >
-                {reflectionTask.goal_detail?.title ?? 'task'}
-              </div>
-              <div
-                style={{
-                  fontSize: 20,
-                  color: '#e8e4dc',
-                  fontWeight: 400,
-                  lineHeight: 1.3,
-                  letterSpacing: '-.01em',
-                }}
-              >
-                {reflectionTask.title}
-              </div>
-              {reflectionTask.description ? (
-                <div style={{ fontSize: 13, color: '#555', lineHeight: 1.5, marginTop: 8 }}>
-                  {reflectionTask.description}
-                </div>
-              ) : null}
-              <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
-                {reflectionTask.planned_start_time && reflectionTask.planned_end_time ? (
-                  <span style={{ fontSize: 12, color: '#333' }}>
-                    {reflectionTask.planned_start_time.slice(0, 5)} –{' '}
-                    {reflectionTask.planned_end_time.slice(0, 5)}
-                  </span>
-                ) : null}
-                <span style={{ fontSize: 12, color: '#333' }}>
-                  {reflectionTask.estimated_mins}m planned
-                </span>
-              </div>
-            </div>
-
-            <div style={{ height: 1, background: '#1e1e1e' }} />
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#555',
-                    textTransform: 'uppercase',
-                    letterSpacing: '.06em',
-                    marginBottom: 6,
-                  }}
-                >
-                  how did it go?
-                </div>
-                <textarea
-                  value={reflNote}
-                  onChange={e => setReflNote(e.target.value)}
-                  placeholder="what happened?"
-                  rows={2}
-                  style={{
-                    width: '100%',
-                    background: '#0f0f0f',
-                    border: '1px solid #1e1e1e',
-                    borderRadius: 8,
-                    padding: '9px 10px',
-                    fontSize: 13,
-                    color: '#e8e4dc',
-                    resize: 'none',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                    lineHeight: 1.5,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#555',
-                    textTransform: 'uppercase',
-                    letterSpacing: '.06em',
-                    marginBottom: 6,
-                  }}
-                >
-                  what went well?
-                </div>
-                <textarea
-                  value={reflWentWell}
-                  onChange={e => setReflWentWell(e.target.value)}
-                  placeholder="what worked?"
-                  rows={2}
-                  style={{
-                    width: '100%',
-                    background: '#0f0f0f',
-                    border: '1px solid #1e1e1e',
-                    borderRadius: 8,
-                    padding: '9px 10px',
-                    fontSize: 13,
-                    color: '#e8e4dc',
-                    resize: 'none',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                    lineHeight: 1.5,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#555',
-                    textTransform: 'uppercase',
-                    letterSpacing: '.06em',
-                    marginBottom: 6,
-                  }}
-                >
-                  what would you do differently?
-                </div>
-                <textarea
-                  value={reflMissed}
-                  onChange={e => setReflMissed(e.target.value)}
-                  placeholder="what missed?"
-                  rows={2}
-                  style={{
-                    width: '100%',
-                    background: '#0f0f0f',
-                    border: '1px solid #1e1e1e',
-                    borderRadius: 8,
-                    padding: '9px 10px',
-                    fontSize: 13,
-                    color: '#e8e4dc',
-                    resize: 'none',
-                    outline: 'none',
-                    fontFamily: 'inherit',
-                    lineHeight: 1.5,
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: '#555',
-                    textTransform: 'uppercase',
-                    letterSpacing: '.06em',
-                  }}
-                >
-                  actual time
-                </div>
-                <input
-                  type="number"
-                  value={reflActualMins}
-                  onChange={e => setReflActualMins(e.target.value)}
-                  placeholder={String(reflectionTask.estimated_mins)}
-                  min={1}
-                  max={480}
-                  style={{
-                    width: 72,
-                    background: '#0f0f0f',
-                    border: '1px solid #1e1e1e',
-                    borderRadius: 8,
-                    padding: '7px 10px',
-                    fontSize: 13,
-                    color: '#e8e4dc',
-                    outline: 'none',
-                    textAlign: 'center',
-                  }}
-                />
-                <span style={{ fontSize: 13, color: '#444' }}>mins</span>
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 8,
-                paddingTop: 8,
-                borderTop: '1px solid #1e1e1e',
-                marginTop: 4,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setReflectionTask(null)}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid #2a2a2a',
-                  borderRadius: 24,
-                  padding: '10px 24px',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: '#888',
-                  cursor: 'pointer',
-                }}
-              >
-                cancel
-              </button>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button
-                  type="button"
-                  onClick={() => void saveReflectionOnly()}
-                  disabled={reflSaving}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid #2a2a2a',
-                    borderRadius: 24,
-                    padding: '10px 24px',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: '#888',
-                    cursor: reflSaving ? 'default' : 'pointer',
-                    opacity: reflSaving ? 0.5 : 1,
-                  }}
-                >
-                  save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void markDoneWithReflection()}
-                  disabled={reflSaving}
-                  style={{
-                    background: reflectionTask.done ? '#1a2a1a' : '#e8e4dc',
-                    color: reflectionTask.done ? '#5DCAA5' : '#0f0f0f',
-                    border: reflectionTask.done ? '1px solid #2a3d2a' : '1px solid transparent',
-                    borderRadius: 24,
-                    padding: '10px 24px',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    cursor: reflSaving ? 'default' : 'pointer',
-                    opacity: reflSaving ? 0.5 : 1,
-                  }}
-                >
-                  {reflSaving ? 'saving...' : reflectionTask.done ? 'update' : 'mark done'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ReflectionModal
+        task={reflectionTask}
+        note={reflNote}
+        wentWell={reflWentWell}
+        missed={reflMissed}
+        actualMins={reflActualMins}
+        saving={reflSaving}
+        onClose={() => setReflectionTask(null)}
+        onNoteChange={setReflNote}
+        onWentWellChange={setReflWentWell}
+        onMissedChange={setReflMissed}
+        onActualMinsChange={setReflActualMins}
+        onSaveOnly={() => void saveReflectionOnly()}
+        onMarkDone={() => void markDoneWithReflection()}
+      />
     </Shell>
   )
 }
 
 export default function TodayPage() {
   return (
-    <Suspense
-      fallback={
-        <Shell wide>
-          <div className={styles.page}>
-            <p style={{ fontSize: 'var(--fs-body-small)', color: 'var(--text-secondary)' }}>loading...</p>
-          </div>
-        </Shell>
-      }
-    >
+    <Suspense fallback={<LoadingFallback />}>
       <TodayPageContent />
     </Suspense>
   )

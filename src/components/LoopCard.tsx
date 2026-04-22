@@ -1,6 +1,6 @@
-  'use client'
+'use client'
 
-  import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
   import { usePathname } from 'next/navigation'
   import api from '@/lib/api'
 
@@ -70,38 +70,43 @@
 
     const hour = new Date().getHours()
 
-    async function loadData() {
-      try {
-        const [goalsRes, planRes, gateRes] = await Promise.all([
-          api.get<Goal[]>('/goals/', { params: { status: 'active' } }),
-          api.get<DayPlan[]>('/dayplans/', { params: { date: todayIso() } }),
-          api.get<unknown[]>('/distractions/', { params: { verdict: 'none' } }),
-        ])
-        const goals = goalsRes.data ?? []
-        const plans = planRes.data ?? []
-        const plan: DayPlan | null = plans[0] ?? null
-        setHasGoals(goals.length > 0)
-        setHasPlan(plan !== null && (plan.tasks?.length ?? 0) > 0)
-        const done = (plan?.tasks?.filter(
-          (t: { done: boolean }) => t.done) ?? []).length
-        setTasksDone(done)
-        setTasksTotal(plan?.tasks?.length ?? 0)
-        setGateCount((gateRes.data ?? []).length)
-        setLoaded(true)
-      } catch {
-        setLoaded(true)
-      }
+  const loadData = useCallback(async () => {
+    try {
+      const [goalsRes, planRes, gateRes] = await Promise.all([
+        api.get<Goal[]>('/goals/', { params: { status: 'active' } }),
+        api.get<DayPlan[]>('/dayplans/', { params: { date: todayIso() } }),
+        api.get<unknown[]>('/distractions/', { params: { verdict: 'none' } }),
+      ])
+      const goals = goalsRes.data ?? []
+      const plans = planRes.data ?? []
+      const plan: DayPlan | null = plans[0] ?? null
+      const done = (plan?.tasks?.filter((t: { done: boolean }) => t.done) ?? []).length
+
+      setHasGoals(goals.length > 0)
+      setHasPlan(plan !== null && (plan.tasks?.length ?? 0) > 0)
+      setTasksDone(done)
+      setTasksTotal(plan?.tasks?.length ?? 0)
+      setGateCount((gateRes.data ?? []).length)
+      setLoaded(true)
+    } catch {
+      setLoaded(true)
     }
+  }, [])
 
     useEffect(() => {
+    const initialLoad = setTimeout(() => {
       void loadData()
+    }, 0)
 
       const handler = () => {
         void loadData()
       }
       window.addEventListener('himmah:refresh', handler)
-      return () => window.removeEventListener('himmah:refresh', handler)
-    }, [pathname])
+    return () => {
+      clearTimeout(initialLoad)
+      window.removeEventListener('himmah:refresh', handler)
+    }
+  }, [loadData, pathname])
 
     const phase = getPhase(hasGoals, hasPlan, tasksDone, tasksTotal, hour)
 
